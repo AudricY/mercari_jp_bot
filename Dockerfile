@@ -36,6 +36,9 @@ RUN curl -SL "https://chromedriver.storage.googleapis.com/${CHROME_DRIVER_VERSIO
 # Set working directory
 WORKDIR /app
 
+# Ensure Python can import the local package in /app/src
+ENV PYTHONPATH="/app/src:$PYTHONPATH"
+
 # Copy project files into container
 COPY . /app/
 
@@ -43,4 +46,4 @@ COPY . /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Run bot script
-CMD ["python", "mercari_telegram_bot_config_improved.py"]
+CMD ["python", "-m", "mercari_bot.main"]
