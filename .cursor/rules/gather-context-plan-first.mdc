@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+When responding to a user request that involves code modifications or architectural decisions:
+
+1. **Gather Context**
+   * Use tool calls to explore the codebase and gather more context.
+   * If more context are still needed, ask the user to provide more context.
+
+1. **Draft a Plan**
+   * Summarise purpose & scope of the change.
+   * List key files, modules, or services to modify or create.
+   * Provide a step-by-step implementation outline (including tests and verification).
+   * Highlight potential risks, trade-offs, or open questions.
+
+2. **Share for Review**
+   * Save the plan as `PLAN-<short-desccription>.md` at the project root.
+   * Present the plan's content to the user for feedback.
+
+3. **Await Approval & Baseline Checks**
+   * Do **not** perform any code edits until the user explicitly approves the plan.
+
+4. **Implement**
+   * Follow the approved plan.
+
+5. **Post-Implementation**
+   * Present a concise summary of changes and any follow-up actions to the user.
+
+if asked to just implement/execute without planning then directly implement/execute without having to draft the plan.
+
+Following this rule ensures that all changes are informed by existing documentation, quality-gated, and reviewed before and after implementation.
+
