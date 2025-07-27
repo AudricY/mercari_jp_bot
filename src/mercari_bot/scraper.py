@@ -53,8 +53,8 @@ def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome) -> Lis
 
     encoded_keyword = urllib.parse.quote(keyword)
     url = (
-        "https://jp.mercari.com/zh-TW/search?keyword="
-        f"{encoded_keyword}&lang=zh-TW&sort=created_time&order=desc&status=on_sale"
+        "https://jp.mercari.com/search?keyword="
+        f"{encoded_keyword}&sort=created_time&order=desc"
     )
 
     logging.info("Navigating to: %s", url)
@@ -84,9 +84,14 @@ def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome) -> Lis
         try:
             href = el.find_element(By.XPATH, ".//a").get_attribute("href")
             text = el.text.strip()
-            title = text.split("\n")[0] if text else "Untitled Item"
+            # logging.info("element: %s", el.get_attribute("innerHTML"))
             img_url = el.find_element(By.CSS_SELECTOR, "img").get_attribute("src")
             price_display, numeric_price = parse_price(text)
+            title_element = el.find_element(By.CSS_SELECTOR, 'span[data-testid="thumbnail-item-name"]')
+            title = title_element.text
+            price_element = el.find_element(By.CSS_SELECTOR, 'div[class*="priceContainer"]')
+            price = price_element.text
+            logging.info("price: %s", price)
 
             if price_display is None or numeric_price is None:
                 logging.debug("Skipping item due to price conversion issue: %s", title)
@@ -96,7 +101,7 @@ def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome) -> Lis
                 title=title,
                 url=href,
                 img_url=img_url,
-                price_display=price_display,
+                price_display=price,
                 numeric_price=numeric_price,
             )
 
