@@ -64,40 +64,40 @@ CHAT_ID=YOUR_CHAT_ID
     *   Go to `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates` in your web browser (replace `<YOUR_BOT_TOKEN>` with your bot's token).
     *   Look for the `chat` object and find the `id` field. This is your `CHAT_ID`.
 
-### 3. `config.ini`
-Create a file named `config.ini` in your project directory with the following content. This file centralizes various bot settings.
+### 3. `config.yaml`
+Create a file named `config.yaml` in your project directory with the following content. This file centralizes various bot settings.
 
-```ini
-[BOT_SETTINGS]
-MAX_SEEN_ITEMS = 1000
-SEEN_FILE = seen_items.json
+```yaml
+bot_settings:
+  max_seen_items: 1000
+  seen_file: seen_items.json
 
-[SCHEDULE]
-DAILY_SUMMARY_TIME = 12:30
+schedule:
+  daily_summary_time: "12:30"
 
-[DELAYS]
-KEYWORD_BATCH_DELAY = 10
-FULL_CYCLE_DELAY = 60
+delays:
+  keyword_batch_delay: 10
+  full_cycle_delay: 60
 
-[KEYWORDS]
-Nintendo Switch = Nintendo Switch
-Pokemon Cards = Pokemon Cards
-Japanese Books = Japanese Books
+keywords:
+  Nintendo Switch: Nintendo Switch
+  Pokemon Cards: Pokemon Cards
+  Japanese Books: Japanese Books
 ```
 
-*   **`MAX_SEEN_ITEMS`**: The maximum number of seen items to keep track of.
-*   **`SEEN_FILE`**: The name of the JSON file used to store seen items.
-*   **`KEYWORDS`**: This section contains the keywords for Mercari searches. Each entry should be in the format `Original Keyword = English Translation`. The bot will use the original keyword for searching Mercari and the English translation for Telegram messages. For example:
-    ```ini
-    [KEYWORDS]
-    Nintendo Switch = Nintendo Switch
-    ポケモンカード = Pokemon Cards
-    日本の本 = Japanese Books
+*   **`max_seen_items`**: The maximum number of seen items to keep track of.
+*   **`seen_file`**: The name of the JSON file used to store seen items.
+*   **`keywords`**: This section contains the keywords for Mercari searches. Each entry should be in the format `Original Keyword: English Translation`. The bot will use the original keyword for searching Mercari and the English translation for Telegram messages. For example:
+    ```yaml
+    keywords:
+      Nintendo Switch: Nintendo Switch
+      ポケモンカード: Pokemon Cards
+      日本の本: Japanese Books
     ```
     If the original keyword is already in English, you can simply repeat it as the translation.
-*   **`DAILY_SUMMARY_TIME`**: The time (in HH:MM format) when the daily summary will be sent.
-*   **`KEYWORD_BATCH_DELAY`**: The delay in seconds between processing different keywords.
-*   **`FULL_CYCLE_DELAY`**: The delay in seconds after a full cycle of all keywords is completed.
+*   **`daily_summary_time`**: The time (in HH:MM format) when the daily summary will be sent.
+*   **`keyword_batch_delay`**: The delay in seconds between processing different keywords.
+*   **`full_cycle_delay`**: The delay in seconds after a full cycle of all keywords is completed.
 
 
 ## Running the Bot

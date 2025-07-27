@@ -1,0 +1,14 @@
+bot_settings:
+  max_seen_items: 1000
+  seen_file: seen_items.json
+
+schedule:
+  daily_summary_time: "12:30"
+
+delays:
+  keyword_batch_delay: 5
+  full_cycle_delay: 30
+
+keywords:
+  ps3: プレイステーション3 (PS3) 本体
+  ps4: プレイステーション4 (PS4) 本体 

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import configparser
 import logging
 import os
 import pathlib
 import sys
 from dataclasses import dataclass
 
+import yaml
 from dotenv import load_dotenv
 
 
 @dataclass(slots=True)
 class Settings:
-    """Runtime configuration loaded from .env and config.ini."""
+    """Runtime configuration loaded from .env and config.yaml."""
 
     # Telegram
     bot_token: str
@@ -43,17 +43,24 @@ def _load_env(base_dir: pathlib.Path) -> None:
     load_dotenv(env_path)
 
 
-def _load_ini(base_dir: pathlib.Path) -> configparser.ConfigParser:
-    """Return a ConfigParser loaded from *config.ini* at project root."""
+def _load_yaml(base_dir: pathlib.Path) -> dict:
+    """Return a dictionary loaded from *config.yaml* at project root."""
 
-    cfg_path = base_dir / "config.ini"
+    cfg_path = base_dir / "config.yaml"
     if not cfg_path.exists():
         logging.critical("Configuration file '%s' not found. Please create it.", cfg_path)
         sys.exit(1)
 
-    parser = configparser.ConfigParser()
-    parser.read(cfg_path, encoding="utf-8")
-    return parser
+    try:
+        with open(cfg_path, 'r', encoding='utf-8') as file:
+            config = yaml.safe_load(file)
+            return config or {}
+    except yaml.YAMLError as e:
+        logging.critical("Error parsing YAML configuration file '%s': %s", cfg_path, e)
+        sys.exit(1)
+    except Exception as e:
+        logging.critical("Error reading configuration file '%s': %s", cfg_path, e)
+        sys.exit(1)
 
 
 def load_settings() -> Settings:
@@ -71,22 +78,27 @@ def load_settings() -> Settings:
         logging.critical("Missing Telegram credentials in key.env file! BOT_TOKEN and CHAT_ID are required.")
         sys.exit(1)
 
-    # 2. Parse INI ------------------------------------------------------------
-    parser = _load_ini(base_dir)
+    # 2. Parse YAML ------------------------------------------------------------
+    config = _load_yaml(base_dir)
 
-    max_seen_items = parser.getint("BOT_SETTINGS", "MAX_SEEN_ITEMS", fallback=6000)
-    seen_file = parser.get("BOT_SETTINGS", "SEEN_FILE", fallback="seen_items.json")
+    # Extract bot settings with fallbacks
+    bot_settings = config.get("bot_settings", {})
+    max_seen_items = bot_settings.get("max_seen_items", 6000)
+    seen_file = bot_settings.get("seen_file", "seen_items.json")
 
-    daily_summary_time = parser.get("SCHEDULE", "DAILY_SUMMARY_TIME", fallback="12:30")
+    # Extract schedule settings with fallbacks
+    schedule = config.get("schedule", {})
+    daily_summary_time = schedule.get("daily_summary_time", "12:30")
 
-    keyword_batch_delay = parser.getint("DELAYS", "KEYWORD_BATCH_DELAY", fallback=10)
-    full_cycle_delay = parser.getint("DELAYS", "FULL_CYCLE_DELAY", fallback=60)
+    # Extract delay settings with fallbacks
+    delays = config.get("delays", {})
+    keyword_batch_delay = delays.get("keyword_batch_delay", 10)
+    full_cycle_delay = delays.get("full_cycle_delay", 60)
 
-    try:
-        keywords: dict[str, str] = dict(parser.items("KEYWORDS"))
-    except configparser.NoSectionError:
-        keywords = {}
-        logging.warning("No [KEYWORDS] section found in config.ini – the bot will run without active searches.")
+    # Extract keywords with fallbacks
+    keywords = config.get("keywords", {})
+    if not keywords:
+        logging.warning("No 'keywords' section found in config.yaml – the bot will run without active searches.")
 
     settings = Settings(
         bot_token=bot_token,
