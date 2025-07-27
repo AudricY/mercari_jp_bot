@@ -15,7 +15,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
 from .models import Item
-from .utils import convert_price_to_yen
+from .utils import parse_price
 
 
 def initialize_webdriver() -> webdriver.Chrome | None:
@@ -44,8 +44,8 @@ def initialize_webdriver() -> webdriver.Chrome | None:
     return None
 
 
-def fetch_items(keyword: str, seen_items: dict, rate: float, driver: webdriver.Chrome) -> List[Item]:
-    """Return new/cheaper *Item* instances for *keyword*."""
+def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome) -> List[Item]:
+    """Return new/cheaper *Item* instances for *keyword* (no currency conversion)."""
 
     if not driver:
         logging.error("WebDriver is not available. Cannot fetch items.")
@@ -86,9 +86,9 @@ def fetch_items(keyword: str, seen_items: dict, rate: float, driver: webdriver.C
             text = el.text.strip()
             title = text.split("\n")[0] if text else "Untitled Item"
             img_url = el.find_element(By.CSS_SELECTOR, "img").get_attribute("src")
-            price_display, numeric_price = convert_price_to_yen(text, rate)
+            price_display, numeric_price = parse_price(text)
 
-            if not price_display or not numeric_price:
+            if price_display is None or numeric_price is None:
                 logging.debug("Skipping item due to price conversion issue: %s", title)
                 continue
 

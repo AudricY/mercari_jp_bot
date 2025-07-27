@@ -5,7 +5,6 @@ import sys
 import time
 from collections import defaultdict
 
-import requests
 import schedule
 
 from .config import load_settings, Settings
@@ -16,22 +15,7 @@ from .scheduler import send_daily_summary
 
 CYCLES_BEFORE_RESTART = 10
 
-
-def get_usd_to_jpy_rate() -> float:
-    """Return current USD→JPY exchange rate (fallback to 145.0)."""
-
-    try:
-        response = requests.get("https://open.er-api.com/v6/latest/USD", timeout=5)
-        response.raise_for_status()
-        data = response.json()
-        rate = float(data["rates"]["JPY"])
-        logging.info("Fetched USD to JPY exchange rate: %s", rate)
-        return rate
-    except requests.exceptions.RequestException as exc:
-        logging.warning("⚠️ Failed to fetch exchange rate, using fallback (145.0). Error: %s", exc)
-    except (KeyError, TypeError) as exc:
-        logging.warning("⚠️ Failed to parse exchange rate data, using fallback (145.0). Error: %s", exc)
-    return 145.0
+# Removed currency-conversion helper – bot now uses raw prices as displayed.
 
 
 def _run(cfg: Settings):
@@ -41,8 +25,6 @@ def _run(cfg: Settings):
     if not cfg.keywords:
         logging.critical("No keywords loaded. Please add keywords to the [KEYWORDS] section in config.ini.")
         sys.exit(1)
-
-    rate = get_usd_to_jpy_rate()
 
     driver = initialize_webdriver()
     if not driver:
@@ -56,7 +38,7 @@ def _run(cfg: Settings):
         while True:
             for kw_original, kw_translated in cfg.keywords.items():
                 logging.info("Starting search for keyword: %s (Translated: %s)", kw_original, kw_translated)
-                items = fetch_items(kw_original, seen_items, rate, driver)
+                items = fetch_items(kw_original, seen_items, driver)
 
                 if items:
                     send_message(cfg, f"🔍 Found new listings for: <b>{kw_translated}</b>...")
