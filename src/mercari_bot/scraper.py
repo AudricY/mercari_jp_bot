@@ -89,9 +89,9 @@ def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome) -> Lis
             price_display, numeric_price = parse_price(text)
             title_element = el.find_element(By.CSS_SELECTOR, 'span[data-testid="thumbnail-item-name"]')
             title = title_element.text
-            price_element = el.find_element(By.CSS_SELECTOR, 'div[class*="priceContainer"]')
-            price = price_element.text
-            logging.info("price: %s", price)
+            # price_element = el.find_element(By.CSS_SELECTOR, 'div[class*="priceContainer"]')
+            # price = price_element.text
+            # logging.info("price: %s", price)
 
             if price_display is None or numeric_price is None:
                 logging.debug("Skipping item due to price conversion issue: %s", title)
@@ -101,7 +101,7 @@ def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome) -> Lis
                 title=title,
                 url=href,
                 img_url=img_url,
-                price_display=price,
+                price_display=price_display,
                 numeric_price=numeric_price,
             )
 
