@@ -9,6 +9,7 @@ delays:
   keyword_batch_delay: 5
   full_cycle_delay: 30
 
+# Mapping: display name (key) -> search term (value)
 keywords:
   ps3: プレイステーション3 (PS3) 本体
   ps4: プレイステーション4 (PS4) 本体 

@@ -25,7 +25,7 @@ class Settings:
     keyword_batch_delay: int = 10
     full_cycle_delay: int = 60
 
-    # Keywords mapping (original -> translated)
+    # Keywords mapping (display name -> search term)
     keywords: dict[str, str] | None = None
 
     @property

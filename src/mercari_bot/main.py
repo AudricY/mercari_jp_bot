@@ -30,28 +30,28 @@ def _run(cfg: Settings):
     if not driver:
         sys.exit(1)
 
-    # Register daily summary job
-    schedule.every().day.at(cfg.daily_summary_time).do(send_daily_summary, cfg, daily_counts, cfg.keywords)
+    # Register daily summary job (keywords mapping no longer required)
+    schedule.every().day.at(cfg.daily_summary_time).do(send_daily_summary, cfg, daily_counts)
 
     cycle_count = 0
     try:
         while True:
-            for kw_original, kw_translated in cfg.keywords.items():
-                logging.info("Starting search for keyword: %s (Translated: %s)", kw_original, kw_translated)
-                items = fetch_items(kw_original, seen_items, driver)
+            for display_name, search_term in cfg.keywords.items():
+                logging.info("Starting search for keyword: %s (Search term: %s)", display_name, search_term)
+                items = fetch_items(search_term, seen_items, driver)
 
                 if items:
-                    send_message(cfg, f"🔍 Found new listings for: <b>{kw_translated}</b>...")
-                    daily_counts[kw_original] += len(items)
-                    logging.info("🚀 Sending %d items for keyword: %s", len(items), kw_original)
+                    send_message(cfg, f"🔍 Found new listings for: <b>{display_name}</b>...")
+                    daily_counts[display_name] += len(items)
+                    logging.info("🚀 Sending %d items for keyword: %s", len(items), display_name)
                     for item in sorted(items, key=lambda x: x.timestamp):
                         send_photo(cfg, item.title, item.url, item.img_url, item.price_display, item.timestamp)
                     send_message(
                         cfg,
-                        f"✅ Done! Found <b>{len(items)}</b> new item{'s' if len(items) != 1 else ''} for <b>{kw_translated}</b>.",
+                        f"✅ Done! Found <b>{len(items)}</b> new item{'s' if len(items) != 1 else ''} for <b>{display_name}</b>.",
                     )
                 else:
-                    logging.info("No new items found for keyword: %s", kw_original)
+                    logging.info("No new items found for keyword: %s", display_name)
 
                 time.sleep(cfg.keyword_batch_delay)
 
