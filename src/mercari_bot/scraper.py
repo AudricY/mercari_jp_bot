@@ -54,7 +54,7 @@ def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome) -> Lis
     encoded_keyword = urllib.parse.quote(keyword)
     url = (
         "https://jp.mercari.com/search?keyword="
-        f"{encoded_keyword}&sort=created_time&order=desc"
+        f"{encoded_keyword}&sort=created_time&order=desc&status=on_sale"
     )
 
     logging.info("Navigating to: %s", url)
