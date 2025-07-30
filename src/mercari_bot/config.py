@@ -28,6 +28,9 @@ class Settings:
     chat_id: str
 
     # Bot behaviour
+    telegram_min_delay: float = 1.2
+    telegram_max_retries: int = 3
+    telegram_backoff_factor: float = 2.0
     max_seen_items: int = 6000
     seen_file: str = "seen_items.json"
     daily_summary_time: str = "12:30"
@@ -100,11 +103,14 @@ def load_settings() -> Settings:
     schedule = config.get("schedule", {})
     daily_summary_time = schedule.get("daily_summary_time", "12:30")
     max_telegram_messages_per_item = bot_settings.get("max_telegram_messages_per_item")
+    telegram_max_retries = bot_settings.get("telegram_max_retries", 3)
+    telegram_backoff_factor = bot_settings.get("telegram_backoff_factor", 2.0)
 
     # Extract delay settings with fallbacks
     delays = config.get("delays", {})
     keyword_batch_delay = delays.get("keyword_batch_delay", 10)
     full_cycle_delay = delays.get("full_cycle_delay", 60)
+    telegram_min_delay = delays.get("telegram_min_delay", 1.2)
 
     # Extract keywords with fallbacks
     raw_keywords = config.get("keywords", {})
@@ -130,6 +136,9 @@ def load_settings() -> Settings:
     settings = Settings(
         bot_token=bot_token,
         chat_id=chat_id,
+        telegram_min_delay=telegram_min_delay,
+        telegram_max_retries=telegram_max_retries,
+        telegram_backoff_factor=telegram_backoff_factor,
         max_seen_items=max_seen_items,
         seen_file=str((base_dir / seen_file).resolve()),
         daily_summary_time=daily_summary_time,
