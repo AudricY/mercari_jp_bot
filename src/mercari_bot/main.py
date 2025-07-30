@@ -34,21 +34,28 @@ def _run(cfg: Settings):
     schedule.every().day.at(cfg.daily_summary_time).do(send_daily_summary, cfg, daily_counts)
 
     cycle_count = 0
+    max_msgs_cfg = cfg.max_telegram_messages_per_item
     try:
         while True:
-            for display_name, search_term in cfg.keywords.items():
-                logging.info("Starting search for keyword: %s (Search term: %s)", display_name, search_term)
-                items = fetch_items(search_term, seen_items, driver)
+            for display_name, kw_cfg in cfg.keywords.items():
+                logging.info("Starting search for keyword: %s (Search term: %s)", display_name, kw_cfg.term)
+                items = fetch_items(kw_cfg.term, seen_items, driver, kw_cfg.price_min, kw_cfg.price_max, kw_cfg.title_must_contain)
 
                 if items:
                     send_message(cfg, f"🔍 Found new listings for: <b>{display_name}</b>...")
-                    daily_counts[display_name] += len(items)
-                    logging.info("🚀 Sending %d items for keyword: %s", len(items), display_name)
-                    for item in sorted(items, key=lambda x: x.timestamp):
-                        send_photo(cfg, item.title, item.url, item.img_url, item.price_display, item.timestamp)
+                    allowed_items = items if max_msgs_cfg is None else items[:max_msgs_cfg]
+                    daily_counts[display_name] += len(allowed_items)
+
+                    if allowed_items:
+                        logging.info("🚀 Sending %d items for keyword: %s", len(allowed_items), display_name)
+                        for item in sorted(allowed_items, key=lambda x: x.timestamp):
+                            send_photo(cfg, item.title, item.url, item.img_url, item.price_display, item.timestamp)
+                    else:
+                        logging.info("No items to send after applying message limit for %s", display_name)
+
                     send_message(
                         cfg,
-                        f"✅ Done! Found <b>{len(items)}</b> new item{'s' if len(items) != 1 else ''} for <b>{display_name}</b>.",
+                        f"✅ Done! Sent <b>{len(allowed_items)}</b> new item{'s' if len(allowed_items) != 1 else ''} for <b>{display_name}</b>.",
                     )
                 else:
                     logging.info("No new items found for keyword: %s", display_name)

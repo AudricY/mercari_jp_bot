@@ -44,7 +44,7 @@ def initialize_webdriver() -> webdriver.Chrome | None:
     return None
 
 
-def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome) -> List[Item]:
+def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome, price_min: int | None = None, price_max: int | None = None, title_must_contain: str | list[str] | None = None) -> List[Item]:
     """Return new/cheaper *Item* instances for *keyword* (no currency conversion)."""
 
     if not driver:
@@ -56,6 +56,10 @@ def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome) -> Lis
         "https://jp.mercari.com/search?keyword="
         f"{encoded_keyword}&sort=created_time&order=desc&status=on_sale"
     )
+    if price_min is not None:
+        url += f"&price_min={price_min}"
+    if price_max is not None:
+        url += f"&price_max={price_max}"
 
     logging.info("Navigating to: %s", url)
     driver.get(url)
@@ -89,6 +93,13 @@ def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome) -> Lis
             price_display, numeric_price = parse_price(text)
             title_element = el.find_element(By.CSS_SELECTOR, 'span[data-testid="thumbnail-item-name"]')
             title = title_element.text
+            # Apply title filter if configured
+            if title_must_contain:
+                required_terms = [title_must_contain] if isinstance(title_must_contain, str) else title_must_contain
+                lower_title = title.lower()
+                if not any(term.lower() in lower_title for term in required_terms):
+                    logging.debug("Skipping item due to title filter: %s", title)
+                    continue
             # price_element = el.find_element(By.CSS_SELECTOR, 'div[class*="priceContainer"]')
             # price = price_element.text
             # logging.info("price: %s", price)

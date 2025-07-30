@@ -11,6 +11,15 @@ from dotenv import load_dotenv
 
 
 @dataclass(slots=True)
+class KeywordConfig:
+    """Configuration for a single search keyword, including optional price range."""
+    term: str
+    price_min: int | None = None
+    price_max: int | None = None
+    title_must_contain: str | list[str] | None = None
+
+
+@dataclass(slots=True)
 class Settings:
     """Runtime configuration loaded from .env and config.yaml."""
 
@@ -19,14 +28,18 @@ class Settings:
     chat_id: str
 
     # Bot behaviour
+    telegram_min_delay: float = 1.2
+    telegram_max_retries: int = 3
+    telegram_backoff_factor: float = 2.0
     max_seen_items: int = 6000
     seen_file: str = "seen_items.json"
     daily_summary_time: str = "12:30"
     keyword_batch_delay: int = 10
     full_cycle_delay: int = 60
+    max_telegram_messages_per_item: int | None = None
 
     # Keywords mapping (display name -> search term)
-    keywords: dict[str, str] | None = None
+    keywords: dict[str, 'KeywordConfig'] | None = None
 
     @property
     def has_keywords(self) -> bool:  # Convenience helper
@@ -89,26 +102,50 @@ def load_settings() -> Settings:
     # Extract schedule settings with fallbacks
     schedule = config.get("schedule", {})
     daily_summary_time = schedule.get("daily_summary_time", "12:30")
+    max_telegram_messages_per_item = bot_settings.get("max_telegram_messages_per_item")
+    telegram_max_retries = bot_settings.get("telegram_max_retries", 3)
+    telegram_backoff_factor = bot_settings.get("telegram_backoff_factor", 2.0)
 
     # Extract delay settings with fallbacks
     delays = config.get("delays", {})
     keyword_batch_delay = delays.get("keyword_batch_delay", 10)
     full_cycle_delay = delays.get("full_cycle_delay", 60)
+    telegram_min_delay = delays.get("telegram_min_delay", 1.2)
 
     # Extract keywords with fallbacks
-    keywords = config.get("keywords", {})
-    if not keywords:
+    raw_keywords = config.get("keywords", {})
+    # Convert raw keywords mapping into KeywordConfig objects (supports old and new style)
+    parsed_keywords: dict[str, KeywordConfig] = {}
+    for display_name, spec in raw_keywords.items():
+        if isinstance(spec, str):
+            parsed_keywords[display_name] = KeywordConfig(term=spec)
+        elif isinstance(spec, dict):
+            term = spec.get("term") or spec.get("search") or ""
+            if not term:
+                logging.warning("Keyword '%s' entry missing 'term'; skipping.", display_name)
+                continue
+            price_min = spec.get("price_min")
+            price_max = spec.get("price_max")
+            title_must_contain = spec.get("title_must_contain")
+            parsed_keywords[display_name] = KeywordConfig(term=term, price_min=price_min, price_max=price_max, title_must_contain=title_must_contain)
+        else:
+            logging.warning("Keyword '%s' has unsupported type; skipping.", display_name)
+    if not raw_keywords:
         logging.warning("No 'keywords' section found in config.yaml – the bot will run without active searches.")
 
     settings = Settings(
         bot_token=bot_token,
         chat_id=chat_id,
+        telegram_min_delay=telegram_min_delay,
+        telegram_max_retries=telegram_max_retries,
+        telegram_backoff_factor=telegram_backoff_factor,
         max_seen_items=max_seen_items,
         seen_file=str((base_dir / seen_file).resolve()),
         daily_summary_time=daily_summary_time,
         keyword_batch_delay=keyword_batch_delay,
         full_cycle_delay=full_cycle_delay,
-        keywords=keywords,
+        max_telegram_messages_per_item=max_telegram_messages_per_item,
+        keywords=parsed_keywords,
     )
 
     return settings 
