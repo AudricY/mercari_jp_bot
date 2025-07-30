@@ -11,6 +11,14 @@ from dotenv import load_dotenv
 
 
 @dataclass(slots=True)
+class KeywordConfig:
+    """Configuration for a single search keyword, including optional price range."""
+    term: str
+    price_min: int | None = None
+    price_max: int | None = None
+
+
+@dataclass(slots=True)
 class Settings:
     """Runtime configuration loaded from .env and config.yaml."""
 
@@ -26,7 +34,7 @@ class Settings:
     full_cycle_delay: int = 60
 
     # Keywords mapping (display name -> search term)
-    keywords: dict[str, str] | None = None
+    keywords: dict[str, 'KeywordConfig'] | None = None
 
     @property
     def has_keywords(self) -> bool:  # Convenience helper
@@ -96,8 +104,23 @@ def load_settings() -> Settings:
     full_cycle_delay = delays.get("full_cycle_delay", 60)
 
     # Extract keywords with fallbacks
-    keywords = config.get("keywords", {})
-    if not keywords:
+    raw_keywords = config.get("keywords", {})
+    # Convert raw keywords mapping into KeywordConfig objects (supports old and new style)
+    parsed_keywords: dict[str, KeywordConfig] = {}
+    for display_name, spec in raw_keywords.items():
+        if isinstance(spec, str):
+            parsed_keywords[display_name] = KeywordConfig(term=spec)
+        elif isinstance(spec, dict):
+            term = spec.get("term") or spec.get("search") or ""
+            if not term:
+                logging.warning("Keyword '%s' entry missing 'term'; skipping.", display_name)
+                continue
+            price_min = spec.get("price_min")
+            price_max = spec.get("price_max")
+            parsed_keywords[display_name] = KeywordConfig(term=term, price_min=price_min, price_max=price_max)
+        else:
+            logging.warning("Keyword '%s' has unsupported type; skipping.", display_name)
+    if not raw_keywords:
         logging.warning("No 'keywords' section found in config.yaml – the bot will run without active searches.")
 
     settings = Settings(
@@ -108,7 +131,7 @@ def load_settings() -> Settings:
         daily_summary_time=daily_summary_time,
         keyword_batch_delay=keyword_batch_delay,
         full_cycle_delay=full_cycle_delay,
-        keywords=keywords,
+        keywords=parsed_keywords,
     )
 
     return settings 
