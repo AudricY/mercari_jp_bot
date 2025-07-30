@@ -10,7 +10,7 @@ schedule:
 
 delays:
   keyword_batch_delay: 5
-  full_cycle_delay: 30
+  full_cycle_delay: 10
   telegram_min_delay: 1.5
 
 # Mapping: display name (key) -> search term (value)
