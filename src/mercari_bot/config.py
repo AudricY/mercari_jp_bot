@@ -32,6 +32,7 @@ class Settings:
     daily_summary_time: str = "12:30"
     keyword_batch_delay: int = 10
     full_cycle_delay: int = 60
+    max_telegram_messages_per_scrape: int | None = None
 
     # Keywords mapping (display name -> search term)
     keywords: dict[str, 'KeywordConfig'] | None = None
@@ -97,6 +98,7 @@ def load_settings() -> Settings:
     # Extract schedule settings with fallbacks
     schedule = config.get("schedule", {})
     daily_summary_time = schedule.get("daily_summary_time", "12:30")
+    max_telegram_messages_per_scrape = bot_settings.get("max_telegram_messages_per_scrape")
 
     # Extract delay settings with fallbacks
     delays = config.get("delays", {})
@@ -131,6 +133,7 @@ def load_settings() -> Settings:
         daily_summary_time=daily_summary_time,
         keyword_batch_delay=keyword_batch_delay,
         full_cycle_delay=full_cycle_delay,
+        max_telegram_messages_per_scrape=max_telegram_messages_per_scrape,
         keywords=parsed_keywords,
     )
 
