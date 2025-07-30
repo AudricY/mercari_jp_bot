@@ -16,7 +16,11 @@ keywords:
     term: プレイステーション3 (PS3) 本体
     price_min: 4000
     price_max: 10000
+    title_must_contain:
+      - 本体
   ps4:
     term: プレイステーション4 (PS4) 本体
     price_min: 7000
     price_max: 15000
+    title_must_contain:
+      - 本体
