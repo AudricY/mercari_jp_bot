@@ -34,31 +34,24 @@ def _run(cfg: Settings):
     schedule.every().day.at(cfg.daily_summary_time).do(send_daily_summary, cfg, daily_counts)
 
     cycle_count = 0
-    max_msgs_cfg = cfg.max_telegram_messages_per_scrape
+    max_msgs_cfg = cfg.max_telegram_messages_per_item
     try:
         while True:
-            messages_sent = 0  # Telegram messages sent in this scrape cycle
             for display_name, kw_cfg in cfg.keywords.items():
-                # Skip if we've reached the allowed messages for this cycle
-                if max_msgs_cfg is not None and messages_sent >= max_msgs_cfg:
-                    logging.info("Reached max Telegram messages per scrape (%d). Skipping remaining keywords.", max_msgs_cfg)
-                    break
                 logging.info("Starting search for keyword: %s (Search term: %s)", display_name, kw_cfg.term)
                 items = fetch_items(kw_cfg.term, seen_items, driver, kw_cfg.price_min, kw_cfg.price_max, kw_cfg.title_must_contain)
 
                 if items:
                     send_message(cfg, f"🔍 Found new listings for: <b>{display_name}</b>...")
-                    remaining_quota = None if max_msgs_cfg is None else max_msgs_cfg - messages_sent
-                    allowed_items = items if remaining_quota is None else items[:remaining_quota]
+                    allowed_items = items if max_msgs_cfg is None else items[:max_msgs_cfg]
                     daily_counts[display_name] += len(allowed_items)
 
                     if allowed_items:
                         logging.info("🚀 Sending %d items for keyword: %s", len(allowed_items), display_name)
                         for item in sorted(allowed_items, key=lambda x: x.timestamp):
                             send_photo(cfg, item.title, item.url, item.img_url, item.price_display, item.timestamp)
-                            messages_sent += 1
                     else:
-                        logging.info("Message quota exhausted. Skipping sending items for %s", display_name)
+                        logging.info("No items to send after applying message limit for %s", display_name)
 
                     send_message(
                         cfg,

@@ -1,6 +1,6 @@
 bot_settings:
   max_seen_items: 1000
-  max_telegram_messages_per_scrape: 10   # None or omit to disable limit
+  max_telegram_messages_per_item: 10   # None or omit to disable limit
   seen_file: seen_items.json
 
 schedule:
