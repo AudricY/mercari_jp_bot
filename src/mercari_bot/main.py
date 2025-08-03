@@ -39,7 +39,7 @@ def _run(cfg: Settings):
         while True:
             for display_name, kw_cfg in cfg.keywords.items():
                 logging.info("Starting search for keyword: %s (Search term: %s)", display_name, kw_cfg.term)
-                items = fetch_items(kw_cfg.term, seen_items, driver, kw_cfg.price_min, kw_cfg.price_max, kw_cfg.title_must_contain)
+                items = fetch_items(kw_cfg.term, seen_items, driver, kw_cfg.price_min, kw_cfg.price_max, kw_cfg.title_must_contain, kw_cfg.exclude_keyword)
 
                 if items:
                     send_message(cfg, f"🔍 Found new listings for: <b>{display_name}</b>...")

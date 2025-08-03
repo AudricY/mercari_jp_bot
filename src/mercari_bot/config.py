@@ -17,6 +17,7 @@ class KeywordConfig:
     price_min: int | None = None
     price_max: int | None = None
     title_must_contain: str | list[str] | None = None
+    exclude_keyword: str | None = None
 
 
 @dataclass(slots=True)
@@ -127,7 +128,8 @@ def load_settings() -> Settings:
             price_min = spec.get("price_min")
             price_max = spec.get("price_max")
             title_must_contain = spec.get("title_must_contain")
-            parsed_keywords[display_name] = KeywordConfig(term=term, price_min=price_min, price_max=price_max, title_must_contain=title_must_contain)
+            exclude_keyword = spec.get("exclude_keyword")
+            parsed_keywords[display_name] = KeywordConfig(term=term, price_min=price_min, price_max=price_max, title_must_contain=title_must_contain, exclude_keyword=exclude_keyword)
         else:
             logging.warning("Keyword '%s' has unsupported type; skipping.", display_name)
     if not raw_keywords:

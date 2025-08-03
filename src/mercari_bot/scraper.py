@@ -44,7 +44,7 @@ def initialize_webdriver() -> webdriver.Chrome | None:
     return None
 
 
-def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome, price_min: int | None = None, price_max: int | None = None, title_must_contain: str | list[str] | None = None) -> List[Item]:
+def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome, price_min: int | None = None, price_max: int | None = None, title_must_contain: str | list[str] | None = None, exclude_keyword: str | None = None) -> List[Item]:
     """Return new/cheaper *Item* instances for *keyword* (no currency conversion)."""
 
     if not driver:
@@ -60,6 +60,9 @@ def fetch_items(keyword: str, seen_items: dict, driver: webdriver.Chrome, price_
         url += f"&price_min={price_min}"
     if price_max is not None:
         url += f"&price_max={price_max}"
+    if exclude_keyword is not None:
+        encoded_exclude = urllib.parse.quote(exclude_keyword)
+        url += f"&exclude_keyword={encoded_exclude}"
 
     logging.info("Navigating to: %s", url)
     driver.get(url)

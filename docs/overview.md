@@ -3,16 +3,18 @@
 > A high-level guide to the structure, responsibilities, and runtime behaviour of the Mercari Telegram Bot codebase.
 
 ## Table of Contents
-1. [Project Goals](#project-goals)
-2. [High-Level Architecture](#high-level-architecture)
-3. [Directory Layout](#directory-layout)
-4. [Configuration & Runtime Parameters](#configuration--runtime-parameters)
-5. [Core Modules](#core-modules)
-6. [End-to-End Execution Flow](#end-to-end-execution-flow)
-7. [Daily Summary Scheduler](#daily-summary-scheduler)
-8. [Telegram Rate-Limiting Strategy](#telegram-rate-limiting-strategy)
-9. [Extending / Customising](#extending--customising)
-10. [Maintaining This Document](#maintaining-this-document)
+- [Mercari Telegram Bot – Architecture Overview](#mercari-telegram-bot--architecture-overview)
+  - [Table of Contents](#table-of-contents)
+  - [Project Goals](#project-goals)
+  - [High-Level Architecture](#high-level-architecture)
+  - [Directory Layout](#directory-layout)
+  - [Configuration \& Runtime Parameters](#configuration--runtime-parameters)
+  - [Core Modules](#core-modules)
+  - [End-to-End Execution Flow](#end-to-end-execution-flow)
+  - [Daily Summary Scheduler](#daily-summary-scheduler)
+  - [Telegram Rate-Limiting Strategy](#telegram-rate-limiting-strategy)
+  - [Extending / Customising](#extending--customising)
+  - [Maintaining This Document](#maintaining-this-document)
 
 ---
 
