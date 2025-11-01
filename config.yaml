@@ -18,7 +18,7 @@ keywords:
   ps3:
     term: プレイステーション3 (PS3) 本体
     price_min: 5000
-    price_max: 13000
+    price_max: 15000
     exclude_keyword: CECH 
   ps4:
     term: プレイステーション4 (PS4) 本体
