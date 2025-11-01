@@ -13,7 +13,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # Install system libraries and Chrome dependencies
 RUN apt-get update && apt-get install -y \
     wget curl unzip gnupg2 \
-    xvfb libxi6 libgconf-2-4 libnss3 libxss1 \
+    xvfb libxi6 libnss3 libxss1 \
     libasound2 libx11-xcb1 libappindicator3-1 \
     libgtk-3-0 libgbm1 libvulkan1 xdg-utils \
     fonts-liberation \
@@ -37,7 +37,7 @@ RUN curl -SL "https://chromedriver.storage.googleapis.com/${CHROME_DRIVER_VERSIO
 WORKDIR /app
 
 # Ensure Python can import the local package in /app/src
-ENV PYTHONPATH="/app/src:$PYTHONPATH"
+ENV PYTHONPATH="/app/src"
 
 # Copy project files into container
 COPY . /app/
