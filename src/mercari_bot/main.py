@@ -5,6 +5,8 @@ import sys
 import time
 from collections import defaultdict
 
+from requests.exceptions import RequestException
+
 import schedule
 
 from .config import load_settings, Settings
@@ -49,7 +51,16 @@ def _run(cfg: Settings):
                     if allowed_items:
                         logging.info("🚀 Sending %d items for keyword: %s", len(allowed_items), display_name)
                         for item in sorted(allowed_items, key=lambda x: x.timestamp):
-                            send_photo(cfg, item.title, item.url, item.img_url, item.price_display, item.timestamp)
+                            try:
+                                send_photo(cfg, item.title, item.url, item.img_url, item.price_display, item.timestamp)
+                            except RequestException as exc:
+                                logging.error("Failed to send photo for '%s': %s", item.title, exc)
+                                try:
+                                    send_message(cfg, f"⚠️ Failed to send photo for <b>{item.title}</b>: {exc}")
+                                except RequestException as msg_exc:
+                                    logging.error("Also failed to send error notification: %s", msg_exc)
+                            except Exception as exc:  # pragma: no cover – unexpected runtime errors
+                                logging.error("Unexpected error sending photo for '%s': %s", item.title, exc, exc_info=True)
                     else:
                         logging.info("No items to send after applying message limit for %s", display_name)
 
@@ -82,6 +93,7 @@ def _run(cfg: Settings):
         send_message(cfg, f"❗️ An error occurred: {exc}")
         logging.error("Shutting down due to critical error.")
     finally:
+        save_seen_items(cfg, seen_items)
         if driver:
             driver.quit()
             logging.info("WebDriver closed.")
