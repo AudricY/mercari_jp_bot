@@ -13,11 +13,16 @@ from dotenv import load_dotenv
 @dataclass(slots=True)
 class KeywordConfig:
     """Configuration for a single search keyword, including optional price range."""
-    term: str
+    term: str | list[str]  # Single term or list of terms to search
     price_min: int | None = None
     price_max: int | None = None
     title_must_contain: str | list[str] | None = None
     exclude_keyword: str | None = None
+
+    @property
+    def terms(self) -> list[str]:
+        """Return term(s) as a list for uniform iteration."""
+        return [self.term] if isinstance(self.term, str) else self.term
 
 
 @dataclass(slots=True)
@@ -121,10 +126,16 @@ def load_settings() -> Settings:
         if isinstance(spec, str):
             parsed_keywords[display_name] = KeywordConfig(term=spec)
         elif isinstance(spec, dict):
-            term = spec.get("term") or spec.get("search") or ""
+            term = spec.get("term") or spec.get("search")
             if not term:
                 logging.warning("Keyword '%s' entry missing 'term'; skipping.", display_name)
                 continue
+            # Validate term: must be a non-empty string or non-empty list of strings
+            if isinstance(term, list):
+                term = [t for t in term if isinstance(t, str) and t.strip()]
+                if not term:
+                    logging.warning("Keyword '%s' has empty term list; skipping.", display_name)
+                    continue
             price_min = spec.get("price_min")
             price_max = spec.get("price_max")
             title_must_contain = spec.get("title_must_contain")

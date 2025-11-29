@@ -89,14 +89,20 @@ mercari_jp_bot/
    * `bot_settings` – limits, retry/back-off values, path to `seen_items.json`.
    * `schedule` – daily summary time (`HH:MM`).
    * `delays` – inter-keyword and inter-cycle delays plus minimum delay between Telegram requests.
-   * `keywords` – mapping of display name → search spec, e.g.
+   * `keywords` – mapping of display name → search spec. The `term` field accepts a single string or a list of strings for multiple search terms:
      ```yaml
      keywords:
        ps3:
-         term: プレイステーション3 (PS3) 本体
+         term:                              # Multiple search terms
+           - プレイステーション3 (PS3) 本体
+           - Playstation 3
+           - PS3
          price_min: 4000
          price_max: 10000
          title_must_contain: [本体]
+       ps4:
+         term: プレイステーション4 (PS4) 本体  # Single term still works
+         price_min: 7000
      ```
 
 `config.py` merges the environment variables and YAML into a typed `Settings` dataclass which is passed around at runtime.

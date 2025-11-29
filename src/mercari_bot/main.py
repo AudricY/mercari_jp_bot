@@ -40,8 +40,17 @@ def _run(cfg: Settings):
     try:
         while True:
             for display_name, kw_cfg in cfg.keywords.items():
-                logging.info("Starting search for keyword: %s (Search term: %s)", display_name, kw_cfg.term)
-                items = fetch_items(kw_cfg.term, seen_items, driver, kw_cfg.price_min, kw_cfg.price_max, kw_cfg.title_must_contain, kw_cfg.exclude_keyword)
+                terms = kw_cfg.terms  # list of search terms (1 or more)
+                logging.info("Starting search for keyword: %s (%d term(s))", display_name, len(terms))
+
+                # Aggregate items from all search terms
+                items = []
+                for term in terms:
+                    logging.info("  Searching term: %s", term)
+                    term_items = fetch_items(term, seen_items, driver, kw_cfg.price_min, kw_cfg.price_max, kw_cfg.title_must_contain, kw_cfg.exclude_keyword)
+                    items.extend(term_items)
+                    if len(terms) > 1:
+                        time.sleep(cfg.keyword_batch_delay)  # delay between term searches
 
                 if items:
                     send_message(cfg, f"🔍 Found new listings for: <b>{display_name}</b>...")

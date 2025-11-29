@@ -16,9 +16,12 @@ delays:
 # Mapping: display name (key) -> search term (value)
 keywords:
   ps3:
-    term: プレイステーション3 (PS3) 本体
-    price_min: 5000
-    price_max: 15000
+    term: 
+      - プレイステーション3 (PS3) 本体
+      - Playstation 3
+      - PS3
+    price_min: 4000
+    price_max: 22000
     exclude_keyword: CECH 
   ps4:
     term: プレイステーション4 (PS4) 本体
