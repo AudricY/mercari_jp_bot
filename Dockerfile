@@ -5,7 +5,7 @@ FROM mcr.microsoft.com/playwright:v1.50.0-jammy AS base
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN corepack enable
+RUN npm install -g pnpm@10.22.0
 
 COPY package.json tsconfig.json tsconfig.base.json ./
 COPY pnpm-workspace.yaml ./

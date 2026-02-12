@@ -45,7 +45,7 @@ const summaryQueue = createQueue("send-daily-summary", config.REDIS_URL);
 const retryQueue = createQueue("retry-failed-notification", config.REDIS_URL);
 
 const app = Fastify({
-  logger,
+  loggerInstance: logger,
   trustProxy: true,
 });
 

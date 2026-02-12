@@ -14,11 +14,6 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "declaration": true,
-    "sourceMap": true,
-    "baseUrl": ".",
-    "paths": {
-      "@mercari-bot/core": ["packages/core/src/index.ts"],
-      "@mercari-bot/db": ["packages/db/src/index.ts"]
-    }
+    "sourceMap": true
   }
 }
