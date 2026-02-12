@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: mercari_bot
+          POSTGRES_USER: mercari
+          POSTGRES_PASSWORD: mercari
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mercari -d mercari_bot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    env:
+      DATABASE_URL: postgresql://mercari:mercari@localhost:5432/mercari_bot?schema=public
+      REDIS_URL: redis://localhost:6379
+      ADMIN_TOKEN: test-admin-token
+      ADMIN_ALLOWED_IPS: 127.0.0.1,::1
+      TELEGRAM_BOT_TOKEN: test-bot-token
+      TELEGRAM_CHAT_ID: test-chat
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Generate Prisma client
+        run: pnpm run db:generate
+
+      - name: Run migrations
+        run: pnpm run db:migrate
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Test
+        run: pnpm run test

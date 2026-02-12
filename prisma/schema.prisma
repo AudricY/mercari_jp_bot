@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ScanRunStatus {
+  running
+  success
+  failed
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+  suppressed
+}
+
+model Keyword {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  enabled     Boolean   @default(true)
+  terms       Json
+  filters     Json
+  intervalSec Int       @default(60) @map("interval_sec")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  listings    Listing[]
+  seen        SeenListing[]
+  scanRuns    ScanRun[]
+  notifications Notification[]
+  dailyCounts DailyKeywordCount[]
+
+  @@map("keywords")
+}
+
+model Listing {
+  id              String         @id @default(uuid())
+  sourceListingId String?        @map("source_listing_id")
+  title           String
+  url             String         @unique
+  imageUrl        String         @map("image_url")
+  currency        String
+  numericPrice    Decimal        @map("numeric_price") @db.Decimal(12, 2)
+  rawPriceDisplay String         @map("raw_price_display")
+  scrapedAt       DateTime       @map("scraped_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  keywordId       String?        @map("keyword_id")
+  keyword         Keyword?       @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+
+  notifications   Notification[]
+
+  @@index([keywordId, scrapedAt])
+  @@map("listings")
+}
+
+model SeenListing {
+  id         String   @id @default(uuid())
+  dedupeKey  String   @unique @map("dedupe_key")
+  listingId  String   @map("listing_id")
+  keywordId  String   @map("keyword_id")
+  lastPrice  Decimal  @map("last_price") @db.Decimal(12, 2)
+  firstSeenAt DateTime @map("first_seen_at")
+  lastSeenAt DateTime @map("last_seen_at")
+
+  keyword    Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@index([keywordId])
+  @@map("seen_listings")
+}
+
+model ScanRun {
+  id          String       @id @default(uuid())
+  keywordId   String       @map("keyword_id")
+  keyword     Keyword      @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  startedAt   DateTime     @default(now()) @map("started_at")
+  finishedAt  DateTime?    @map("finished_at")
+  status      ScanRunStatus @default(running)
+  itemsFound  Int          @default(0) @map("items_found")
+  itemsNew    Int          @default(0) @map("items_new")
+  errorCode   String?      @map("error_code")
+  errorMessage String?     @map("error_message")
+
+  @@index([keywordId, startedAt])
+  @@map("scan_runs")
+}
+
+model Notification {
+  id                String             @id @default(uuid())
+  listingId          String             @map("listing_id")
+  keywordId          String             @map("keyword_id")
+  channel            String
+  status             NotificationStatus @default(pending)
+  attemptCount       Int                @default(0) @map("attempt_count")
+  lastError          String?            @map("last_error")
+  providerMessageId  String?            @map("provider_message_id")
+  sentAt             DateTime?          @map("sent_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  listing            Listing            @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  keyword            Keyword            @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@index([keywordId, channel, status])
+  @@map("notifications")
+}
+
+model DailyKeywordCount {
+  dateUtc    DateTime @map("date_utc") @db.Date
+  keywordId  String   @map("keyword_id")
+  sentCount  Int      @default(0) @map("sent_count")
+
+  keyword    Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@id([dateUtc, keywordId])
+  @@map("daily_keyword_counts")
+}
+
+model SystemConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_config")
+}

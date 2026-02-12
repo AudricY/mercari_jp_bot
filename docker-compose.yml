@@ -1,11 +1,105 @@
-
 services:
-  mercari-bot:
-    build: .
-    container_name: mercari-bot
+  postgres:
+    image: postgres:16-alpine
+    container_name: mercari-postgres
     restart: unless-stopped
-    env_file:
-      - key.env
+    environment:
+      POSTGRES_DB: mercari_bot
+      POSTGRES_USER: mercari
+      POSTGRES_PASSWORD: mercari
+    ports:
+      - "5432:5432"
     volumes:
-      - .:/app
-    working_dir: /app
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mercari -d mercari_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mercari-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  migrations:
+    build: .
+    container_name: mercari-migrations
+    env_file:
+      - .env
+    command: ["pnpm", "run", "db:migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    container_name: mercari-api
+    env_file:
+      - .env
+    command: ["pnpm", "--filter", "@mercari-bot/api", "run", "start"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    ports:
+      - "3000:3000"
+
+  scheduler:
+    build: .
+    container_name: mercari-scheduler
+    env_file:
+      - .env
+    command: ["pnpm", "--filter", "@mercari-bot/scheduler", "run", "start"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+
+  worker-scrape:
+    build: .
+    container_name: mercari-worker-scrape
+    env_file:
+      - .env
+    command: ["pnpm", "--filter", "@mercari-bot/worker-scrape", "run", "start"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+
+  worker-notify:
+    build: .
+    container_name: mercari-worker-notify
+    env_file:
+      - .env
+    command: ["pnpm", "--filter", "@mercari-bot/worker-notify", "run", "start"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:

@@ -1,0 +1,21 @@
+{
+  "name": "@mercari-bot/worker-scrape",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo 'no tests for @mercari-bot/worker-scrape yet'",
+    "lint": "echo 'no lint configured for @mercari-bot/worker-scrape'"
+  },
+  "dependencies": {
+    "@mercari-bot/core": "workspace:*",
+    "@mercari-bot/db": "workspace:*",
+    "dotenv": "^16.4.7",
+    "playwright": "^1.50.0"
+  }
+}

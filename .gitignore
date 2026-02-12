@@ -210,4 +210,12 @@ venv
 config.ini
 seen_items.json
 venv/
-*.json
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.npm/
+.pnpm-store/
+coverage/
+playwright-report/
+*.tsbuildinfo
