@@ -9,7 +9,7 @@ export interface Metrics {
   scanItemsNewTotal: Counter;
   notificationSendTotal: Counter;
   queueJobLatencySeconds: Histogram;
-  playwrightPageLoadFailuresTotal: Counter;
+  scrapeRequestFailuresTotal: Counter;
   activeWorkers: Gauge;
 }
 
@@ -54,9 +54,9 @@ export function buildMetrics(prefix = "mercari_bot_"): Metrics {
     labelNames: ["queue"] as const,
   });
 
-  const playwrightPageLoadFailuresTotal = new Counter({
-    name: `${prefix}${METRIC_NAMES.playwrightPageLoadFailuresTotal}`,
-    help: "Total Playwright page load failures",
+  const scrapeRequestFailuresTotal = new Counter({
+    name: `${prefix}${METRIC_NAMES.scrapeRequestFailuresTotal}`,
+    help: "Total scrape request failures",
     registers: [registry],
     labelNames: ["keyword"] as const,
   });
@@ -75,7 +75,7 @@ export function buildMetrics(prefix = "mercari_bot_"): Metrics {
     scanItemsNewTotal,
     notificationSendTotal,
     queueJobLatencySeconds,
-    playwrightPageLoadFailuresTotal,
+    scrapeRequestFailuresTotal,
     activeWorkers,
   };
 }

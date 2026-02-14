@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM mcr.microsoft.com/playwright:v1.50.0-jammy AS base
+FROM node:22-slim AS base
 
 WORKDIR /app
 ENV NODE_ENV=production

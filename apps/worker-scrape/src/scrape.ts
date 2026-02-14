@@ -1,19 +1,10 @@
-import { chromium, type Browser } from "playwright";
-
-import { parsePrice } from "@mercari-bot/core";
+import { generateDPoPToken } from "./dpop.js";
 
 interface ScanFilters {
   priceMin: number | null;
   priceMax: number | null;
   titleMustContain: string[];
   excludeKeyword: string | null;
-}
-
-interface RawElement {
-  href: string;
-  title: string;
-  text: string;
-  imageUrl: string;
 }
 
 export interface ScrapedListing {
@@ -23,37 +14,6 @@ export interface ScrapedListing {
   currency: string;
   numericPrice: number;
   rawPriceDisplay: string;
-}
-
-let browserPromise: Promise<Browser> | null = null;
-
-async function getBrowser(headless: boolean): Promise<Browser> {
-  if (!browserPromise) {
-    browserPromise = chromium.launch({ headless });
-  }
-  return browserPromise;
-}
-
-function buildSearchUrl(term: string, filters: ScanFilters): string {
-  const url = new URL("https://jp.mercari.com/search");
-  url.searchParams.set("keyword", term);
-  url.searchParams.set("sort", "created_time");
-  url.searchParams.set("order", "desc");
-  url.searchParams.set("status", "on_sale");
-
-  if (typeof filters.priceMin === "number") {
-    url.searchParams.set("price_min", String(filters.priceMin));
-  }
-
-  if (typeof filters.priceMax === "number") {
-    url.searchParams.set("price_max", String(filters.priceMax));
-  }
-
-  if (filters.excludeKeyword) {
-    url.searchParams.set("exclude_keyword", filters.excludeKeyword);
-  }
-
-  return url.toString();
 }
 
 function applyListingFilters(listing: { title: string }, filters: ScanFilters): boolean {
@@ -73,101 +33,97 @@ function applyListingFilters(listing: { title: string }, filters: ScanFilters): 
   return true;
 }
 
+const API_URL = "https://api.mercari.jp/v2/entities:search";
+
 export async function scanMercariTerm(params: {
   term: string;
   filters: ScanFilters;
-  headless: boolean;
-  navigationTimeoutMs: number;
-  selectorTimeoutMs: number;
+  timeoutMs: number;
   maxItems: number;
 }): Promise<ScrapedListing[]> {
-  const browser = await getBrowser(params.headless);
-  const context = await browser.newContext({
-    locale: "ja-JP",
-    viewport: { width: 1920, height: 2400 },
-    javaScriptEnabled: true,
+  const body = {
+    userId: "",
+    pageSize: params.maxItems,
+    pageToken: "",
+    searchSessionId: crypto.randomUUID().replace(/-/g, ""),
+    indexRouting: "INDEX_ROUTING_UNSPECIFIED",
+    thumbnailTypes: [],
+    searchCondition: {
+      keyword: params.term,
+      excludeKeyword: params.filters.excludeKeyword ?? "",
+      sort: "SORT_CREATED_TIME",
+      order: "ORDER_DESC",
+      status: ["STATUS_ON_SALE"],
+      sizeId: [],
+      categoryId: [],
+      brandId: [],
+      sellerId: [],
+      priceMin: params.filters.priceMin ?? 0,
+      priceMax: params.filters.priceMax ?? 0,
+      itemConditionId: [],
+      shippingPayerId: [],
+      shippingFromArea: [],
+      shippingMethod: [],
+      colorId: [],
+      hasCoupon: false,
+      attributes: [],
+      itemTypes: [],
+      skuIds: [],
+    },
+    defaultDatasets: [],
+    serviceFrom: "suruga",
+    withItemBrand: true,
+    withItemSize: false,
+    withItemPromotions: true,
+    withItemSizes: true,
+    withShopname: false,
+  };
+
+  const dpopToken = await generateDPoPToken(API_URL, "POST");
+
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "X-Platform": "web",
+      DPoP: dpopToken,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(params.timeoutMs),
   });
 
-  const page = await context.newPage();
-  const url = buildSearchUrl(params.term, params.filters);
+  if (!response.ok) {
+    throw new Error(`Mercari API responded with ${response.status}: ${await response.text()}`);
+  }
 
-  await page.goto(url, {
-    timeout: params.navigationTimeoutMs,
-    waitUntil: "domcontentloaded",
-  });
+  const data = (await response.json()) as {
+    items?: Array<{
+      id: string;
+      name: string;
+      price: number;
+      thumbnails: string[];
+    }>;
+  };
 
-  await page.waitForSelector('li[data-testid="item-cell"]', {
-    timeout: params.selectorTimeoutMs,
-  });
-
-  await page.evaluate(async () => {
-    for (let index = 0; index < 2; index += 1) {
-      window.scrollTo(0, document.body.scrollHeight);
-      await new Promise((resolve) => setTimeout(resolve, 900));
-    }
-  });
-
-  const elements = await page.$$eval('li[data-testid="item-cell"]', (nodes) => {
-    const rows: RawElement[] = [];
-
-    for (const node of nodes) {
-      const anchor = node.querySelector("a");
-      const title =
-        node.querySelector('span[data-testid="thumbnail-item-name"]')?.textContent?.trim() ??
-        anchor?.getAttribute("title")?.trim() ??
-        "";
-      const href = anchor?.getAttribute("href") ?? "";
-      const imageUrl = node.querySelector("img")?.getAttribute("src") ?? "";
-      const text = node.textContent?.trim() ?? "";
-
-      if (!href || !title) {
-        continue;
-      }
-
-      rows.push({
-        href,
-        title,
-        text,
-        imageUrl,
-      });
-    }
-
-    return rows;
-  });
-
-  await context.close();
-
+  const items = data.items ?? [];
   const parsed: ScrapedListing[] = [];
 
-  for (const row of elements.slice(0, params.maxItems)) {
-    const price = parsePrice(row.text);
-    if (!price) {
-      continue;
-    }
-
-    if (!applyListingFilters({ title: row.title }, params.filters)) {
+  for (const item of items) {
+    if (!applyListingFilters({ title: item.name }, params.filters)) {
       continue;
     }
 
     parsed.push({
-      title: row.title,
-      url: row.href.startsWith("http") ? row.href : `https://jp.mercari.com${row.href}`,
-      imageUrl: row.imageUrl,
-      currency: price.currency,
-      numericPrice: price.numericPrice,
-      rawPriceDisplay: price.displayPrice,
+      title: item.name,
+      url: `https://jp.mercari.com/item/${item.id}`,
+      imageUrl: item.thumbnails?.[0] ?? "",
+      currency: "¥",
+      numericPrice: item.price,
+      rawPriceDisplay: `¥${item.price.toLocaleString()}`,
     });
   }
 
   return parsed;
-}
-
-export async function closeBrowser(): Promise<void> {
-  if (!browserPromise) {
-    return;
-  }
-
-  const browser = await browserPromise;
-  await browser.close();
-  browserPromise = null;
 }

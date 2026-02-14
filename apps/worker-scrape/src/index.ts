@@ -18,7 +18,7 @@ import {
 } from "@mercari-bot/core";
 import { createPrismaClient } from "@mercari-bot/db";
 
-import { closeBrowser, scanMercariTerm } from "./scrape.js";
+import { scanMercariTerm } from "./scrape.js";
 
 const config = loadConfig();
 const logger = buildLogger(config.LOG_LEVEL);
@@ -92,13 +92,11 @@ const worker = createWorker(
           scraped = await scanMercariTerm({
             term,
             filters,
-            headless: config.PLAYWRIGHT_HEADLESS,
-            navigationTimeoutMs: config.SCRAPE_NAVIGATION_TIMEOUT_MS,
-            selectorTimeoutMs: config.SCRAPE_SELECTOR_TIMEOUT_MS,
+            timeoutMs: config.SCRAPE_HTTP_TIMEOUT_MS,
             maxItems: config.SCRAPE_MAX_ITEMS_PER_TERM,
           });
         } catch (error) {
-          metrics.playwrightPageLoadFailuresTotal.labels(keyword.name).inc();
+          metrics.scrapeRequestFailuresTotal.labels(keyword.name).inc();
           logger.error(
             {
               keywordId: keyword.id,
@@ -106,7 +104,7 @@ const worker = createWorker(
               term,
               error: redactUnknown(error),
             },
-            "Playwright scan failed for term",
+            "Mercari API scan failed for term",
           );
           continue;
         }
@@ -276,7 +274,6 @@ async function shutdown(): Promise<void> {
   metrics.activeWorkers.labels("scrape").set(0);
   await worker.close();
   await notifyQueue.close();
-  await closeBrowser();
   await prisma.$disconnect();
 }
 

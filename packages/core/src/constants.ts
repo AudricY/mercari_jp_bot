@@ -11,5 +11,5 @@ export const METRIC_NAMES = {
   scanItemsNewTotal: "scan_items_new_total",
   notificationSendTotal: "notification_send_total",
   queueJobLatencySeconds: "queue_job_latency_seconds",
-  playwrightPageLoadFailuresTotal: "playwright_page_load_failures_total",
+  scrapeRequestFailuresTotal: "scrape_request_failures_total",
 } as const;

@@ -15,7 +15,6 @@
   "dependencies": {
     "@mercari-bot/core": "workspace:*",
     "@mercari-bot/db": "workspace:*",
-    "dotenv": "^16.4.7",
-    "playwright": "1.50.0"
+    "dotenv": "^16.4.7"
   }
 }

@@ -14,14 +14,8 @@ const envSchema = z.object({
   TELEGRAM_MAX_RETRIES: z.coerce.number().int().min(0).max(10).default(3),
   TELEGRAM_BACKOFF_FACTOR: z.coerce.number().positive().default(2),
   SENTRY_DSN: z.string().optional().default(""),
-  PLAYWRIGHT_HEADLESS: z
-    .string()
-    .optional()
-    .default("true")
-    .transform((v) => v === "true"),
   SCRAPE_CONCURRENCY: z.coerce.number().int().positive().default(2),
-  SCRAPE_NAVIGATION_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
-  SCRAPE_SELECTOR_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+  SCRAPE_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   SCRAPE_MAX_ITEMS_PER_TERM: z.coerce.number().int().positive().default(100),
   SCHEDULER_TICK_SECONDS: z.coerce.number().int().positive().default(30),
   DISPLAY_TIMEZONE: z.string().default("UTC"),
