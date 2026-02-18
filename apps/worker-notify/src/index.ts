@@ -1,7 +1,5 @@
 import "dotenv/config";
 
-import { NotificationStatus } from "@prisma/client";
-
 import {
   QUEUE_NAMES,
   buildLogger,
@@ -15,12 +13,13 @@ import {
   type RetryFailedNotificationJob,
   type SendDailySummaryJob,
 } from "@mercari-bot/core";
-import { createPrismaClient } from "@mercari-bot/db";
+import { createPrismaClient, initPrisma } from "@mercari-bot/db";
 
 const config = loadConfig();
 const logger = buildLogger(config.LOG_LEVEL);
 const metrics = buildMetrics();
 const prisma = createPrismaClient();
+void initPrisma(prisma);
 
 const notifyQueue = createQueue("notify-item", config.REDIS_URL);
 
@@ -147,7 +146,7 @@ async function sendListingNotification(notificationId: string): Promise<void> {
       prisma.notification.update({
         where: { id: notification.id },
         data: {
-          status: NotificationStatus.sent,
+          status: "sent",
           providerMessageId:
             telegramResponse && typeof telegramResponse === "object" && typeof telegramResponse.result?.message_id !== "undefined"
               ? String(telegramResponse.result.message_id)
@@ -179,7 +178,7 @@ async function sendListingNotification(notificationId: string): Promise<void> {
     metrics.notificationSendTotal.labels("telegram", "sent").inc();
   } catch (error) {
     const err = error instanceof TelegramError ? error : new TelegramError("Unknown telegram error", 500, true);
-    const finalStatus = err.transient ? NotificationStatus.failed : NotificationStatus.suppressed;
+    const finalStatus = err.transient ? "failed" : "suppressed";
 
     await prisma.notification.update({
       where: { id: notification.id },

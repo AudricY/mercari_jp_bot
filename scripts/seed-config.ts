@@ -1,7 +1,8 @@
-import { createPrismaClient } from "@mercari-bot/db";
+import { createPrismaClient, initPrisma } from "@mercari-bot/db";
 
 async function main(): Promise<void> {
   const prisma = createPrismaClient();
+  await initPrisma(prisma);
 
   await prisma.systemConfig.upsert({
     where: { key: "daily_summary_time" },

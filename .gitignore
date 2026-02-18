@@ -219,3 +219,4 @@ dist/
 coverage/
 playwright-report/
 *.tsbuildinfo
+data/

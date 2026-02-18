@@ -1,7 +1,5 @@
 import "dotenv/config";
 
-import { NotificationStatus } from "@prisma/client";
-
 import {
   QUEUE_NAMES,
   buildDedupeKey,
@@ -16,7 +14,7 @@ import {
   type QueuePayloadMap,
   type ScanKeywordJob,
 } from "@mercari-bot/core";
-import { createPrismaClient } from "@mercari-bot/db";
+import { createPrismaClient, initPrisma } from "@mercari-bot/db";
 
 import { scanMercariTerm } from "./scrape.js";
 
@@ -24,6 +22,7 @@ const config = loadConfig();
 const logger = buildLogger(config.LOG_LEVEL);
 const metrics = buildMetrics();
 const prisma = createPrismaClient();
+void initPrisma(prisma);
 
 const notifyQueue = createQueue("notify-item", config.REDIS_URL);
 
@@ -179,7 +178,7 @@ const worker = createWorker(
               listingId: savedListing.id,
               keywordId: keyword.id,
               channel: "telegram",
-              status: NotificationStatus.pending,
+              status: "pending",
             },
           });
 

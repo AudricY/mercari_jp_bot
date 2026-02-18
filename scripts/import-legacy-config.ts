@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { createPrismaClient } from "@mercari-bot/db";
+import { createPrismaClient, initPrisma } from "@mercari-bot/db";
 import YAML from "yaml";
 
 interface LegacyKeywordSpec {
@@ -43,6 +43,7 @@ async function main(): Promise<void> {
   const parsed = YAML.parse(file) as LegacyConfig;
 
   const prisma = createPrismaClient();
+  await initPrisma(prisma);
 
   const summaryTime = parsed.schedule?.daily_summary_time ?? "12:30";
   await prisma.systemConfig.upsert({

@@ -15,7 +15,7 @@ import {
   type ScanKeywordJob,
   type SendDailySummaryJob,
 } from "@mercari-bot/core";
-import { createPrismaClient } from "@mercari-bot/db";
+import { createPrismaClient, initPrisma } from "@mercari-bot/db";
 
 import { assertAdminAccess } from "./auth.js";
 
@@ -269,6 +269,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
 
 async function main(): Promise<void> {
   try {
+    await initPrisma(prisma);
     await app.listen({
       host: "0.0.0.0",
       port: config.PORT,

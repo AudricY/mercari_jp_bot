@@ -6,7 +6,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   ADMIN_TOKEN: z.string().min(8),
   ADMIN_ALLOWED_IPS: z.string().default("127.0.0.1,::1"),
-  DATABASE_URL: z.string().url().or(z.string().startsWith("postgresql://")),
+  DATABASE_URL: z.string().url().or(z.string().startsWith("postgresql://")).or(z.string().startsWith("file:")),
   REDIS_URL: z.string().url().or(z.string().startsWith("redis://")),
   TELEGRAM_BOT_TOKEN: z.string().min(8),
   TELEGRAM_CHAT_ID: z.string().min(1),

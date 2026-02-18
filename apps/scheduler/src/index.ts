@@ -10,7 +10,7 @@ import {
   type ScanKeywordJob,
   type SendDailySummaryJob,
 } from "@mercari-bot/core";
-import { createPrismaClient, getEnabledKeywords } from "@mercari-bot/db";
+import { createPrismaClient, getEnabledKeywords, initPrisma } from "@mercari-bot/db";
 
 const config = loadConfig();
 const logger = buildLogger(config.LOG_LEVEL);
@@ -139,6 +139,7 @@ async function tick(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  await initPrisma(prisma);
   logger.info(
     {
       tickSeconds: config.SCHEDULER_TICK_SECONDS,
