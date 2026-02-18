@@ -6,40 +6,13 @@ import { redactUnknown, type AppConfig, type Metrics } from "@mercari-bot/core";
 
 import { assertAdminAccess } from "./auth.js";
 import { scanKeyword } from "./scanner.js";
+import { syncConfigFromDisk } from "./sync.js";
 
 export interface ApiDeps {
   config: AppConfig;
   logger: Logger;
   metrics: Metrics;
   prisma: PrismaClient;
-}
-
-interface KeywordPayload {
-  name: string;
-  terms: string[];
-  filters?: {
-    priceMin?: number | null;
-    priceMax?: number | null;
-    titleMustContain?: string[];
-    excludeKeyword?: string | null;
-  };
-  intervalSec?: number;
-  enabled?: boolean;
-}
-
-function sanitizeKeywordPayload(payload: KeywordPayload) {
-  return {
-    name: payload.name.trim(),
-    terms: payload.terms.map((term) => term.trim()).filter((term) => term.length > 0),
-    filters: {
-      priceMin: payload.filters?.priceMin ?? null,
-      priceMax: payload.filters?.priceMax ?? null,
-      titleMustContain: payload.filters?.titleMustContain ?? [],
-      excludeKeyword: payload.filters?.excludeKeyword ?? null,
-    },
-    intervalSec: payload.intervalSec ?? 60,
-    enabled: payload.enabled ?? true,
-  };
 }
 
 export function createApi(deps: ApiDeps) {
@@ -79,74 +52,6 @@ export function createApi(deps: ApiDeps) {
   app.get("/v1/keywords", async () => {
     const keywords = await prisma.keyword.findMany({ orderBy: { name: "asc" } });
     return { keywords };
-  });
-
-  app.post<{ Body: KeywordPayload }>("/v1/keywords", async (request, reply) => {
-    const payload = sanitizeKeywordPayload(request.body);
-    if (!payload.name || payload.terms.length === 0) {
-      return reply.code(400).send({ error: "name and terms are required" });
-    }
-
-    const keyword = await prisma.keyword.create({
-      data: {
-        name: payload.name,
-        enabled: payload.enabled,
-        terms: payload.terms,
-        filters: payload.filters,
-        intervalSec: payload.intervalSec,
-      },
-    });
-
-    return reply.code(201).send({ keyword });
-  });
-
-  app.patch<{ Params: { id: string }; Body: Partial<KeywordPayload> }>("/v1/keywords/:id", async (request, reply) => {
-    const current = await prisma.keyword.findUnique({ where: { id: request.params.id } });
-    if (!current) {
-      return reply.code(404).send({ error: "Keyword not found" });
-    }
-
-    const currentTerms = Array.isArray(current.terms)
-      ? current.terms.filter((term): term is string => typeof term === "string")
-      : [];
-    const rawTerms = request.body.terms ?? currentTerms;
-    const payload = sanitizeKeywordPayload({
-      name: request.body.name ?? current.name,
-      terms: rawTerms,
-      filters: {
-        ...(typeof current.filters === "object" && current.filters ? current.filters : {}),
-        ...(request.body.filters ?? {}),
-      } as KeywordPayload["filters"],
-      intervalSec: request.body.intervalSec ?? current.intervalSec,
-      enabled: request.body.enabled ?? current.enabled,
-    });
-
-    const keyword = await prisma.keyword.update({
-      where: { id: request.params.id },
-      data: {
-        name: payload.name,
-        terms: payload.terms,
-        filters: payload.filters,
-        intervalSec: payload.intervalSec,
-        enabled: payload.enabled,
-      },
-    });
-
-    return { keyword };
-  });
-
-  app.delete<{ Params: { id: string } }>("/v1/keywords/:id", async (request, reply) => {
-    const keyword = await prisma.keyword.findUnique({ where: { id: request.params.id } });
-    if (!keyword) {
-      return reply.code(404).send({ error: "Keyword not found" });
-    }
-
-    await prisma.keyword.update({
-      where: { id: request.params.id },
-      data: { enabled: false },
-    });
-
-    return { ok: true };
   });
 
   app.post<{ Params: { id: string } }>("/v1/keywords/:id/scan", async (request) => {
@@ -201,10 +106,8 @@ export function createApi(deps: ApiDeps) {
   });
 
   app.post("/v1/config/reload", async () => {
-    return {
-      ok: true,
-      message: "Runtime config is sourced from database; no in-memory cache refresh required",
-    };
+    const result = await syncConfigFromDisk(prisma, logger);
+    return { ok: true, ...result };
   });
 
   app.setErrorHandler((error, request, reply) => {

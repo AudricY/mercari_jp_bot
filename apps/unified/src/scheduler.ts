@@ -47,28 +47,6 @@ function nowInTimezone(timezone: string): { hour: number; minute: number; date: 
   };
 }
 
-async function getRuntimeSummarySettings(
-  prisma: PrismaClient,
-  config: AppConfig,
-): Promise<{ dailySummaryTime: string; displayTimezone: string }> {
-  const configs = await prisma.systemConfig.findMany({
-    where: {
-      key: {
-        in: ["daily_summary_time", "display_timezone"],
-      },
-    },
-  });
-
-  const map = new Map(configs.map((row) => [row.key, row.value]));
-
-  const dailySummaryTime =
-    typeof map.get("daily_summary_time") === "string" ? String(map.get("daily_summary_time")) : config.DAILY_SUMMARY_TIME;
-  const displayTimezone =
-    typeof map.get("display_timezone") === "string" ? String(map.get("display_timezone")) : config.DISPLAY_TIMEZONE;
-
-  return { dailySummaryTime, displayTimezone };
-}
-
 async function runKeywordScans(nowEpochSec: number, deps: SchedulerDeps): Promise<void> {
   const { config, logger, prisma } = deps;
   const keywords = await getEnabledKeywords(prisma);
@@ -98,10 +76,9 @@ async function runKeywordScans(nowEpochSec: number, deps: SchedulerDeps): Promis
 }
 
 async function maybeRunDailySummary(nowEpochSec: number, deps: SchedulerDeps): Promise<void> {
-  const { config, logger, prisma } = deps;
-  const { dailySummaryTime, displayTimezone } = await getRuntimeSummarySettings(prisma, config);
-  const { hour, minute } = parseDailySummaryTime(dailySummaryTime);
-  const tzNow = nowInTimezone(displayTimezone);
+  const { config, logger } = deps;
+  const { hour, minute } = parseDailySummaryTime(config.DAILY_SUMMARY_TIME);
+  const tzNow = nowInTimezone(config.DISPLAY_TIMEZONE);
 
   if (tzNow.hour !== hour || tzNow.minute !== minute) {
     return;
@@ -117,7 +94,7 @@ async function maybeRunDailySummary(nowEpochSec: number, deps: SchedulerDeps): P
     await sendDailySummary(
       {
         dateUtc: utcDateString(new Date(nowEpochSec * 1000)),
-        timezone: displayTimezone,
+        timezone: config.DISPLAY_TIMEZONE,
         channel: "telegram",
       },
       deps,

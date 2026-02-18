@@ -108,11 +108,3 @@ model DailyKeywordCount {
   @@id([dateUtc, keywordId])
   @@map("daily_keyword_counts")
 }
-
-model SystemConfig {
-  key       String   @id
-  value     Json
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("system_config")
-}

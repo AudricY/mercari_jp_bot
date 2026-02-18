@@ -6,6 +6,7 @@ import { createPrismaClient, initPrisma } from "@mercari-bot/db";
 import { createApi } from "./api.js";
 import { startNotificationProcessor } from "./notifier.js";
 import { startScheduler } from "./scheduler.js";
+import { syncConfigFromDisk } from "./sync.js";
 
 const config = loadConfig();
 const logger = buildLogger(config.LOG_LEVEL);
@@ -16,6 +17,7 @@ const deps = { config, logger, metrics, prisma };
 
 async function main(): Promise<void> {
   await initPrisma(prisma);
+  await syncConfigFromDisk(prisma, logger);
 
   const app = createApi(deps);
   await app.listen({ host: "0.0.0.0", port: config.PORT });

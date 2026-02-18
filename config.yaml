@@ -1,28 +1,16 @@
-bot_settings:
-  max_seen_items: 1000
-  max_telegram_messages_per_item: 10   # None or omit to disable limit
-  seen_file: seen_items.json
-  telegram_max_retries: 5
-  telegram_backoff_factor: 2.5
+# Mercari JP Bot — keyword configuration
+# Presence in this file = enabled. Remove a keyword to disable it.
+# Use POST /v1/config/reload to hot-reload without restarting.
 
-schedule:
-  daily_summary_time: "12:30"
-
-delays:
-  keyword_batch_delay: 1
-  full_cycle_delay: 2
-  telegram_min_delay: 1
-
-# Mapping: display name (key) -> search term (value)
 keywords:
   ps3:
-    term: 
+    term:
       - プレイステーション3 (PS3) 本体
       - Playstation 3
       - PS3
     price_min: 4000
     price_max: 22000
-    exclude_keyword: CECH 
+    exclude_keyword: CECH
   ps4:
     term: プレイステーション4 (PS4) 本体
     price_min: 7000

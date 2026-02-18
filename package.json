@@ -18,9 +18,7 @@
     "lint": "pnpm -r --if-present run lint",
     "db:generate": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "db:migrate:dev": "prisma migrate dev",
-    "db:seed": "tsx scripts/seed-config.ts",
-    "db:import-legacy-config": "tsx scripts/import-legacy-config.ts"
+    "db:migrate:dev": "prisma migrate dev"
   },
   "engines": {
     "node": ">=20.11.0"

@@ -8,8 +8,7 @@
 | Generate Prisma client | `pnpm run db:generate` |
 | Run DB migrations (prod) | `pnpm run db:migrate` |
 | Run DB migrations (dev) | `pnpm run db:migrate:dev -- --name <name>` |
-| Import legacy config.yaml | `pnpm run db:import-legacy-config` |
-| Seed config into DB | `pnpm run db:seed` |
+| Reload config.yaml into DB | `curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:3000/v1/config/reload` |
 | Build all packages | `pnpm run build` |
 | Typecheck all packages | `pnpm run typecheck` |
 | Run tests | `pnpm run test` |
@@ -30,7 +29,7 @@ apps/unified/          — Single-process app: API + scheduler + scraper + notif
 packages/core/         — Shared library: config, logging, types, metrics, scraping, dedup
 packages/db/           — Prisma client wrappers and keyword helpers
 prisma/                — Schema + migrations (SQLite)
-scripts/               — One-off tooling (legacy import, seed, OCI provisioning)
+scripts/               — One-off tooling (OCI provisioning)
 docs/                  — Architecture overview, VPS details
 .github/workflows/     — CI (GitHub Actions)
 ```
@@ -56,15 +55,16 @@ docs/                  — Architecture overview, VPS details
 
 | Module | Role |
 |---|---|
-| `api.ts` | Fastify server — health checks, metrics, keyword CRUD, admin endpoints |
+| `api.ts` | Fastify server — health checks, metrics, keyword read, config reload, admin endpoints |
 | `scheduler.ts` | Periodic scan and daily-summary scheduling |
 | `scanner.ts` | Mercari scraping, dedup, listing persistence |
 | `notifier.ts` | Telegram message delivery with retry/backoff |
 | `auth.ts` | Admin token + IP allowlist middleware |
+| `sync.ts` | Syncs keywords from `config.yaml` into the DB on startup and on reload |
 
 ### Data Model (Prisma/SQLite)
 
-`keywords` → `listings` → `notifications`; plus `seen_listings` (dedup), `scan_runs` (audit), `daily_keyword_counts` (stats), `system_config` (runtime settings).
+`keywords` → `listings` → `notifications`; plus `seen_listings` (dedup), `scan_runs` (audit), `daily_keyword_counts` (stats).
 
 ## Conventions
 
