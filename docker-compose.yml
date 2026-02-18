@@ -4,6 +4,8 @@ services:
     container_name: mercari-migrations
     env_file:
       - .env
+    environment:
+      DATABASE_URL: "file:/app/data/mercari.db"
     command: ["pnpm", "run", "db:migrate"]
     volumes:
       - ./data:/app/data
@@ -13,6 +15,8 @@ services:
     container_name: mercari-app
     env_file:
       - .env
+    environment:
+      DATABASE_URL: "file:/app/data/mercari.db"
     command: ["pnpm", "--filter", "@mercari-bot/unified", "run", "start"]
     restart: unless-stopped
     depends_on:

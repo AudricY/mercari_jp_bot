@@ -5,6 +5,7 @@ FROM node:22-slim AS base
 WORKDIR /app
 ENV NODE_ENV=production
 
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@10.22.0
 
 COPY package.json tsconfig.json tsconfig.base.json ./
