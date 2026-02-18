@@ -30,6 +30,23 @@ RETRY_INTERVAL=300  # 5 minutes
 LOG_FILE="/tmp/oci-provision.log"
 PID_FILE="/tmp/oci-provision.pid"
 
+# Telegram notifications — DM to @audricyap via mercari bot
+MERCARI_ENV="$HOME/mercari_jp_bot/.env"
+if [[ -f "$MERCARI_ENV" ]]; then
+  TELEGRAM_BOT_TOKEN="$(grep -oP '(?<=TELEGRAM_BOT_TOKEN=).*' "$MERCARI_ENV")"
+fi
+TELEGRAM_CHAT_ID="813842569"  # @audricyap
+
+notify_telegram() {
+  local msg="$1"
+  if [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_CHAT_ID:-}" ]]; then
+    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+      -d chat_id="$TELEGRAM_CHAT_ID" \
+      -d text="$msg" \
+      -d parse_mode="Markdown" >/dev/null 2>&1 || true
+  fi
+}
+
 # ── Helpers ──────────────────────────────────────────────────
 
 ensure_oci_cli() {
@@ -137,6 +154,7 @@ try_arm() {
     2>&1; then
     echo ""
     echo "=== ARM instance launched! ==="
+    notify_telegram "🎉 *OCI ARM instance launched!* mercari-proxy-arm is provisioning."
     rm -f "$PID_FILE"
     exit 0
   else
