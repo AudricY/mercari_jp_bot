@@ -1,101 +1,89 @@
 # Mercari JP Bot — Agent Guide
 
-## Quick Reference
+## Commands
 
 | Task | Command |
 |---|---|
-| Install dependencies | `pnpm install` |
+| Install deps | `pnpm install` |
 | Generate Prisma client | `pnpm run db:generate` |
-| Run DB migrations (prod) | `pnpm run db:migrate` |
-| Run DB migrations (dev) | `pnpm run db:migrate:dev -- --name <name>` |
-| Reload config.yaml into DB | `curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:3000/v1/config/reload` |
-| Build all packages | `pnpm run build` |
-| Typecheck all packages | `pnpm run typecheck` |
-| Run tests | `pnpm run test` |
-| Dev mode (unified) | `pnpm --filter @mercari-bot/unified run dev` |
-| Start (unified) | `pnpm --filter @mercari-bot/unified run start` |
-| Docker Compose up | `docker compose up --build` |
+| Migrate DB (dev) | `pnpm run db:migrate:dev -- --name <name>` |
+| Migrate DB (prod) | `pnpm run db:migrate` |
+| Build | `pnpm run build` |
+| Typecheck | `pnpm run typecheck` |
+| Test | `pnpm run test` |
+| Dev mode | `pnpm --filter @mercari-bot/unified run dev` |
+| Start | `pnpm --filter @mercari-bot/unified run start` |
+| Docker up | `docker compose up --build` |
+| Reload keywords | `curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:3000/v1/config/reload` |
 
-## Project Overview
+## What This Is
 
-Mercari JP Bot monitors Mercari Japan listings by keyword, sending near-real-time Telegram alerts for new or price-dropped items. It is a TypeScript monorepo with a unified process that combines an HTTP API, a scheduler, a scraper, and a notification worker — backed by SQLite (via Prisma) and deployed on an Oracle Cloud VPS via Docker.
+TypeScript monorepo: monitors Mercari Japan by keyword, sends Telegram alerts for new/cheaper items. Single Node.js process (API + scheduler + scraper + notifier), SQLite via Prisma, deployed via Docker on Oracle Cloud VPS.
 
-## Architecture
-
-### Directory Layout
+## Layout
 
 ```
 apps/unified/          — Single-process app: API + scheduler + scraper + notifier
-packages/core/         — Shared library: config, logging, types, metrics, scraping, dedup
-packages/db/           — Prisma client wrappers and keyword helpers
+packages/core/         — Config, logging, types, metrics, scraping, dedup
+packages/db/           — Prisma client wrappers, keyword helpers
 prisma/                — Schema + migrations (SQLite)
-scripts/               — One-off tooling (OCI provisioning)
-docs/                  — Architecture overview, VPS details
-.github/workflows/     — CI (GitHub Actions)
+config.yaml            — Keyword definitions (source of truth, synced to DB on startup/reload)
 ```
 
-### Tech Stack
+### Key Modules (`apps/unified/src/`)
 
-- **Language:** TypeScript (ES2022, NodeNext modules, strict mode)
-- **Runtime:** Node.js >= 20.11
-- **Package manager:** pnpm 10 (workspace monorepo)
-- **HTTP framework:** Fastify 5
-- **Database:** SQLite via Prisma ORM
-- **Scraping:** HTTP-based (DPoP auth, custom scraper in `packages/core`)
-- **Notifications:** Telegram Bot API
-- **Logging:** Pino (structured JSON)
-- **Metrics:** prom-client (Prometheus)
-- **Validation:** Zod
-- **Testing:** Vitest (in `packages/core`)
-- **Build:** `tsc` per package
-- **CI:** GitHub Actions (typecheck → build → test)
-- **Deploy:** Docker (single image) on Oracle Cloud VPS
-
-### Key Services (within `apps/unified`)
-
-| Module | Role |
+| File | Role |
 |---|---|
-| `api.ts` | Fastify server — health checks, metrics, keyword read, config reload, admin endpoints |
-| `scheduler.ts` | Periodic scan and daily-summary scheduling |
+| `api.ts` | Fastify server — health, metrics, keywords, config reload, admin |
+| `scheduler.ts` | Periodic scan + daily summary scheduling |
 | `scanner.ts` | Mercari scraping, dedup, listing persistence |
-| `notifier.ts` | Telegram message delivery with retry/backoff |
+| `notifier.ts` | Telegram delivery with retry/backoff |
 | `auth.ts` | Admin token + IP allowlist middleware |
-| `sync.ts` | Syncs keywords from `config.yaml` into the DB on startup and on reload |
+| `sync.ts` | Syncs `config.yaml` → DB keywords |
 
-### Data Model (Prisma/SQLite)
+### Data Model
 
 `keywords` → `listings` → `notifications`; plus `seen_listings` (dedup), `scan_runs` (audit), `daily_keyword_counts` (stats).
 
+## Stack
+
+TypeScript (ESM, strict) · Node 20+ · pnpm 10 · Fastify 5 · Prisma/SQLite · Pino · Zod · Vitest · Docker
+
 ## Conventions
 
-- **Always use pnpm.** Never use npm or yarn.
-- **Always run `pnpm run db:generate`** after changing `prisma/schema.prisma`.
-- **Always run `pnpm run typecheck`** before considering code complete.
-- **Never commit `.env` files.** Use `.env.example` as the template.
-- **Never commit the `data/` directory** — it contains SQLite databases.
-- **Use ESM everywhere.** All packages have `"type": "module"`.
-- **Use `workspace:*`** for inter-package dependencies.
-- **Branch strategy:** `main` is the production branch. Feature branches merge into `main`.
-- **Build before start:** The unified app runs from compiled `dist/` — always `pnpm run build` before `pnpm run start`.
-- **Secrets come from environment only.** No hardcoded tokens or credentials.
-- **Structured logging only.** Use the Pino logger from `@mercari-bot/core`, never `console.log`.
+- **pnpm only.** No npm/yarn.
+- **ESM everywhere.** `"type": "module"`, `workspace:*` for internal deps.
+- **`db:generate` after schema changes.** Prisma client is generated code.
+- **`typecheck` before done.** Always verify.
+- **Build before start.** App runs from `dist/`.
+- **Structured logging.** Pino via `@mercari-bot/core`, never `console.log`.
+- **Env-only secrets.** No hardcoded tokens. Never commit `.env` or `data/`.
+- **Branch strategy.** `main` is production. Feature branches merge into `main`.
 
-## Documentation
+## DB Migration Workflow
 
-| Document | Location |
-|---|---|
-| Architecture overview | [`docs/overview.md`](./docs/overview.md) |
-| Oracle VPS details | [`docs/oracle-vps.md`](./docs/oracle-vps.md) |
-| Database schema | [`prisma/schema.prisma`](./prisma/schema.prisma) |
-| Environment template | [`.env.example`](./.env.example) |
-| CI pipeline | [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) |
-| Deployment workflow | [`docs/workflows/deploy.md`](./docs/workflows/deploy.md) |
-| Database migrations | [`docs/workflows/database-migrations.md`](./docs/workflows/database-migrations.md) |
+1. Edit `prisma/schema.prisma`
+2. `pnpm run db:migrate:dev -- --name <name>`
+3. `pnpm run db:generate`
+4. `pnpm run build && pnpm run typecheck`
+5. Commit migration files in `prisma/migrations/`
+
+Production migrations run automatically via Docker Compose (`prisma migrate deploy`).
+
+## Gotchas
+
+- **Prisma `file:` paths** resolve relative to `prisma/schema.prisma`, not cwd. Docker overrides to absolute `file:/app/data/mercari.db`.
+- **`node:22-slim` needs OpenSSL** — Dockerfile installs it for Prisma.
+- **`pnpm --filter` sets cwd** to the package dir (`apps/unified/`), not repo root. Use `CONFIG_PATH` env var.
+
+## Ops Docs
+
+- Deployment workflow: [`docs/workflows/deploy.md`](./docs/workflows/deploy.md)
+- VPS details: [`docs/oracle-vps.md`](./docs/oracle-vps.md)
 
 ## Continuous Documentation
 
-> **Always update docs as you work.** When you discover gotchas, workarounds, useful commands, error patterns, or non-obvious architecture context — write it down immediately. Don't let knowledge die in a conversation.
->
-> - Small, broad notes → `AGENTS.md`
-> - Workflow-specific → `docs/workflows/`
-> - Package-specific → README within that package
+When you discover gotchas or non-obvious context, write it down:
+- Broad notes → this file
+- Workflow-specific → `docs/workflows/`
+- Package-specific → README in that package
