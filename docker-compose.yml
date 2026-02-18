@@ -17,6 +17,7 @@ services:
       - .env
     environment:
       DATABASE_URL: "file:/app/data/mercari.db"
+      CONFIG_PATH: "/app/config.yaml"
     command: ["pnpm", "--filter", "@mercari-bot/unified", "run", "start"]
     restart: unless-stopped
     depends_on:

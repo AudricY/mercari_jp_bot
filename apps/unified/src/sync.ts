@@ -8,7 +8,7 @@ import { parseYamlConfig } from "@mercari-bot/core";
 import { syncKeywordsFromConfig, type SyncResult } from "@mercari-bot/db";
 
 export async function syncConfigFromDisk(prisma: PrismaClient, logger: Logger): Promise<SyncResult> {
-  const configPath = path.resolve(process.cwd(), "config.yaml");
+  const configPath = process.env.CONFIG_PATH ?? path.resolve(process.cwd(), "config.yaml");
   const content = await fs.readFile(configPath, "utf-8");
   const keywords = parseYamlConfig(content);
 
