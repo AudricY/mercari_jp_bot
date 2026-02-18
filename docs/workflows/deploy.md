@@ -58,4 +58,6 @@ docker compose down
 - The Docker image uses `node:22-slim` with `openssl` installed (required by Prisma).
 - `DATABASE_URL` is overridden in `docker-compose.yml` to an absolute path (`file:/app/data/mercari.db`) because Prisma resolves relative `file:` URLs from the schema directory, not the working directory.
 - The `data/` volume is mounted from the host (`./data:/app/data`) for SQLite persistence.
+- `config.yaml` is mounted read-only (`./config.yaml:/app/config.yaml:ro`). The `CONFIG_PATH` env var points to it.
 - The app listens on port 3000 (mapped to host).
+- To hot-reload keyword config without restarting: edit `config.yaml` on the host, then `curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:3000/v1/config/reload`.

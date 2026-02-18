@@ -44,18 +44,12 @@ pnpm run db:migrate
 
 This runs `prisma migrate deploy`, which applies any pending migrations without creating new ones.
 
-## Seeding
+## Keyword Sync
 
-To seed keyword config from `config.yaml` into the database:
-
-```bash
-pnpm run db:import-legacy-config
-```
-
-Or use the seed script:
+Keywords are synced from `config.yaml` into the `keywords` table automatically on app startup. To trigger a manual re-sync without restarting:
 
 ```bash
-pnpm run db:seed
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:3000/v1/config/reload
 ```
 
 ## Gotchas

@@ -36,7 +36,6 @@ Primary tables (SQLite via Prisma):
 - `scan_runs` — audit log per scan
 - `notifications` — Telegram message tracking
 - `daily_keyword_counts` — stats for daily summaries
-- `system_config` — runtime settings
 
 ## Reliability Behaviors
 - Notifier retries with exponential backoff (configurable via `TELEGRAM_MAX_RETRIES`, `TELEGRAM_BACKOFF_FACTOR`).
@@ -51,5 +50,6 @@ Primary tables (SQLite via Prisma):
 - Telegram token redacted in logs.
 
 ## Config Source of Truth
-- Runtime keyword/filter/schedule config is stored in SQLite.
-- Legacy `config.yaml` can be imported once via `pnpm run db:import-legacy-config`.
+- **`config.yaml`** is the source of truth for keyword definitions. On startup (and on `POST /v1/config/reload`), keywords are synced from YAML into the `keywords` DB table.
+- Keywords present in YAML are enabled; keywords removed from YAML are disabled (not deleted, to preserve FK data).
+- Schedule settings (`DAILY_SUMMARY_TIME`, `DISPLAY_TIMEZONE`) are read from environment variables.
