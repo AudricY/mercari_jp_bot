@@ -84,7 +84,6 @@ docs/                  — Architecture overview, VPS details
 
 | Document | Location |
 |---|---|
-| Project README | [`README.md`](./README.md) |
 | Architecture overview | [`docs/overview.md`](./docs/overview.md) |
 | Oracle VPS details | [`docs/oracle-vps.md`](./docs/oracle-vps.md) |
 | Database schema | [`prisma/schema.prisma`](./prisma/schema.prisma) |

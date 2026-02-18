@@ -63,3 +63,5 @@ pnpm run db:seed
 - Always run `pnpm run db:generate` after schema changes — the Prisma client is generated code and won't update automatically.
 - The SQLite database file lives in `data/` — this directory is gitignored and volume-mounted in Docker.
 - Migration files in `prisma/migrations/` **must** be committed to git.
+- **Prisma relative path resolution**: `file:./data/mercari.db` in `DATABASE_URL` is resolved relative to `prisma/schema.prisma`, **not** the working directory. In Docker, `docker-compose.yml` overrides this with the absolute path `file:/app/data/mercari.db` so the DB lands in the mounted volume.
+- **OpenSSL in Docker**: The `node:22-slim` image doesn't include OpenSSL. The Dockerfile installs it explicitly — Prisma needs it for the query engine.

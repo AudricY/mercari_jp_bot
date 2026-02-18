@@ -1,56 +1,55 @@
-# Mercari JP Bot - Node Architecture Overview
+# Mercari JP Bot — Architecture Overview
 
 ## Goals
 - Monitor Mercari JP listings by keyword filters.
 - Send near-real-time Telegram alerts for new or cheaper items.
-- Persist operational state in Postgres.
-- Isolate failures with queue-driven workers.
+- Persist operational state in SQLite.
+- Run as a single unified process (API + scheduler + scraper + notifier).
 
 ## Runtime Components
 ```mermaid
 graph TD
-  API[Fastify API] --> DB[(Postgres)]
-  Scheduler[Scheduler] --> Q1[scan-keyword queue]
-  Scheduler --> Q2[send-daily-summary queue]
-  W1[Scrape Worker + Playwright] --> Q1
-  W1 --> DB
-  W1 --> Q3[notify-item queue]
-  W2[Notify Worker] --> Q2
-  W2 --> Q3
-  W2 --> DB
-  Q1 --> Redis[(Redis/BullMQ)]
-  Q2 --> Redis
-  Q3 --> Redis
+  API[Fastify API :3000] --> DB[(SQLite)]
+  Scheduler[Scheduler] -->|tick every 30s| Scanner
+  Scanner[Scanner] --> MercariAPI[Mercari HTTP API]
+  Scanner --> DB
+  Scanner --> Notifier[Notifier]
+  Notifier --> TelegramAPI[Telegram Bot API]
+  Notifier --> DB
 ```
 
-## Queue Contracts
-- `scan-keyword`: `{ keywordId, triggeredBy, runId? }`
-- `notify-item`: `{ itemId, keywordId, channel }`
-- `send-daily-summary`: `{ dateUtc, timezone, channel }`
-- `retry-failed-notification`: `{ notificationId, reasonCode }`
+All components run in a single Node.js process (`apps/unified`). There are no queues or separate workers — the scheduler triggers scans directly, and the scanner invokes the notifier inline.
+
+## Data Flow
+
+1. **Scheduler** ticks every `SCHEDULER_TICK_SECONDS` (default 30s), checks which keywords are due for scanning.
+2. **Scanner** calls the Mercari HTTP API (with DPoP authentication), deduplicates results via `seen_listings`, persists new/updated listings, and passes them to the notifier.
+3. **Notifier** sends Telegram messages with rate limiting (`TELEGRAM_MIN_DELAY_MS`) and exponential backoff on failure.
+4. **Daily summary** is scheduled at `DAILY_SUMMARY_TIME` and reports per-keyword listing counts.
 
 ## Data Model
-Primary tables:
-- `keywords`
-- `listings`
-- `seen_listings`
-- `scan_runs`
-- `notifications`
-- `daily_keyword_counts`
-- `system_config`
+
+Primary tables (SQLite via Prisma):
+- `keywords` — search terms, filters, scan intervals
+- `listings` — scraped Mercari items
+- `seen_listings` — dedup hashes
+- `scan_runs` — audit log per scan
+- `notifications` — Telegram message tracking
+- `daily_keyword_counts` — stats for daily summaries
+- `system_config` — runtime settings
 
 ## Reliability Behaviors
-- Per-worker retries with exponential backoff.
-- Telegram provider failures do not crash workers.
-- Photo send failures fall back to text.
-- Dedupe checks persist in `seen_listings`.
-- Structured logs and Prometheus metrics are emitted per process.
+- Notifier retries with exponential backoff (configurable via `TELEGRAM_MAX_RETRIES`, `TELEGRAM_BACKOFF_FACTOR`).
+- Telegram provider failures do not crash the process.
+- Photo send failures fall back to text-only messages.
+- Dedupe checks persist in `seen_listings` to survive restarts.
+- Structured JSON logs (Pino) and Prometheus metrics emitted.
 
 ## Security Baseline
-- Admin API protected by token + IP allowlist.
+- Admin API protected by `ADMIN_TOKEN` + `ADMIN_ALLOWED_IPS`.
 - Secrets loaded from environment only.
-- Telegram token redaction in logs.
+- Telegram token redacted in logs.
 
 ## Config Source of Truth
-- Runtime keyword/filter/schedule config is stored in Postgres.
-- Legacy `config.yaml` is import-only (`pnpm run db:import-legacy-config`).
+- Runtime keyword/filter/schedule config is stored in SQLite.
+- Legacy `config.yaml` can be imported once via `pnpm run db:import-legacy-config`.

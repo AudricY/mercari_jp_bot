@@ -24,6 +24,14 @@ ssh ubuntu@161.118.204.72
 
 Uses `~/.ssh/id_ed25519` key (injected at provisioning).
 
+## System Setup
+
+- **Swap**: 2 GB at `/swapfile` (required — 1 GB RAM will OOM during Docker builds)
+- **Docker**: Docker Engine + Compose (official apt repo, not snap)
+- **Docker log rotation**: `/etc/docker/daemon.json` — `max-size: 10m`, `max-file: 3`
+- **Unattended upgrades**: enabled for automatic security patches
+- **Fail2ban**: enabled for SSH brute-force protection
+
 ## Networking
 
 | Resource | OCID |
@@ -32,7 +40,26 @@ Uses `~/.ssh/id_ed25519` key (injected at provisioning).
 | Subnet | ocid1.subnet.oc1.ap-singapore-1.aaaaaaaayuhuctorqnpmcev3qdymoowtmx2j2oywtc73ns22o2bbrcytwkpa |
 | Internet Gateway | ocid1.internetgateway.oc1.ap-singapore-1.aaaaaaaagw5n52pdc4nezffnygkavb47gigg27gcai4g7dqa2dteuuyy4hnq |
 
-Security list allows inbound TCP port 22 (SSH) from 0.0.0.0/0.
+### Firewall (iptables)
+
+Oracle's default iptables has a REJECT-all rule at the end. Open ports must be inserted **before** it:
+
+```bash
+# Check current rules and find the REJECT rule number
+sudo iptables -L INPUT --line-numbers -n
+
+# Insert before the REJECT rule (adjust N)
+sudo iptables -I INPUT <N> -p tcp --dport <PORT> -j ACCEPT
+sudo netfilter-persistent save
+```
+
+Currently open ports:
+- **22** — SSH
+- **3000** — Bot API (health checks, admin endpoints)
+
+### OCI Security List
+
+The OCI Security List also needs ingress rules for any ports you want accessible from outside the VPS. Port 22 is open by default. Port 3000 can be added if external access is needed (currently only accessed from localhost).
 
 ## OCI CLI Config
 
