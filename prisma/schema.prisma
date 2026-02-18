@@ -38,6 +38,7 @@ model Listing {
   scrapedAt       DateTime       @map("scraped_at")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
+  rawJson         String?        @map("raw_json")
   keywordId       String?        @map("keyword_id")
   keyword         Keyword?       @relation(fields: [keywordId], references: [id], onDelete: SetNull)
 

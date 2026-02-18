@@ -14,6 +14,7 @@ export interface ScrapedListing {
   currency: string;
   numericPrice: number;
   rawPriceDisplay: string;
+  rawJson: string;
 }
 
 function applyListingFilters(listing: { title: string }, filters: ScanFilters): boolean {
@@ -99,29 +100,30 @@ export async function scanMercariTerm(params: {
   }
 
   const data = (await response.json()) as {
-    items?: Array<{
-      id: string;
-      name: string;
-      price: number;
-      thumbnails: string[];
-    }>;
+    items?: Array<Record<string, unknown>>;
   };
 
   const items = data.items ?? [];
   const parsed: ScrapedListing[] = [];
 
   for (const item of items) {
-    if (!applyListingFilters({ title: item.name }, params.filters)) {
+    const name = item.name as string;
+    const id = item.id as string;
+    const price = item.price as number;
+    const thumbnails = item.thumbnails as string[] | undefined;
+
+    if (!applyListingFilters({ title: name }, params.filters)) {
       continue;
     }
 
     parsed.push({
-      title: item.name,
-      url: `https://jp.mercari.com/item/${item.id}`,
-      imageUrl: item.thumbnails?.[0] ?? "",
+      title: name,
+      url: `https://jp.mercari.com/item/${id}`,
+      imageUrl: thumbnails?.[0] ?? "",
       currency: "¥",
-      numericPrice: item.price,
-      rawPriceDisplay: `¥${item.price.toLocaleString()}`,
+      numericPrice: price,
+      rawPriceDisplay: `¥${price.toLocaleString()}`,
+      rawJson: JSON.stringify(item),
     });
   }
 

@@ -119,6 +119,7 @@ export async function scanKeyword(
             currency: listing.currency,
             numericPrice: listing.numericPrice,
             rawPriceDisplay: listing.rawPriceDisplay,
+            rawJson: listing.rawJson,
             scrapedAt: new Date(),
             keywordId: keyword.id,
           },
@@ -128,6 +129,7 @@ export async function scanKeyword(
             currency: listing.currency,
             numericPrice: listing.numericPrice,
             rawPriceDisplay: listing.rawPriceDisplay,
+            rawJson: listing.rawJson,
             scrapedAt: new Date(),
           },
         });
