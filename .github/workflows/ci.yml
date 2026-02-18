@@ -9,15 +9,8 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
 
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-
     env:
       DATABASE_URL: file:./data/test.db
-      REDIS_URL: redis://localhost:6379
       ADMIN_TOKEN: test-admin-token
       ADMIN_ALLOWED_IPS: 127.0.0.1,::1
       TELEGRAM_BOT_TOKEN: test-bot-token

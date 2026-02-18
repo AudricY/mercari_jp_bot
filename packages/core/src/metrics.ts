@@ -1,4 +1,4 @@
-import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from "prom-client";
+import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client";
 
 import { METRIC_NAMES } from "./constants.js";
 
@@ -8,9 +8,7 @@ export interface Metrics {
   scanItemsFoundTotal: Counter;
   scanItemsNewTotal: Counter;
   notificationSendTotal: Counter;
-  queueJobLatencySeconds: Histogram;
   scrapeRequestFailuresTotal: Counter;
-  activeWorkers: Gauge;
 }
 
 export function buildMetrics(prefix = "mercari_bot_"): Metrics {
@@ -46,26 +44,11 @@ export function buildMetrics(prefix = "mercari_bot_"): Metrics {
     labelNames: ["channel", "status"] as const,
   });
 
-  const queueJobLatencySeconds = new Histogram({
-    name: `${prefix}${METRIC_NAMES.queueJobLatencySeconds}`,
-    help: "Queue job latency in seconds",
-    buckets: [0.01, 0.1, 0.5, 1, 2, 5, 10, 30],
-    registers: [registry],
-    labelNames: ["queue"] as const,
-  });
-
   const scrapeRequestFailuresTotal = new Counter({
     name: `${prefix}${METRIC_NAMES.scrapeRequestFailuresTotal}`,
     help: "Total scrape request failures",
     registers: [registry],
     labelNames: ["keyword"] as const,
-  });
-
-  const activeWorkers = new Gauge({
-    name: `${prefix}active_workers`,
-    help: "Number of active worker processes",
-    registers: [registry],
-    labelNames: ["worker"] as const,
   });
 
   return {
@@ -74,8 +57,6 @@ export function buildMetrics(prefix = "mercari_bot_"): Metrics {
     scanItemsFoundTotal,
     scanItemsNewTotal,
     notificationSendTotal,
-    queueJobLatencySeconds,
     scrapeRequestFailuresTotal,
-    activeWorkers,
   };
 }

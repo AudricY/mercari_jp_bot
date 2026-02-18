@@ -7,7 +7,7 @@ const envSchema = z.object({
   ADMIN_TOKEN: z.string().min(8),
   ADMIN_ALLOWED_IPS: z.string().default("127.0.0.1,::1"),
   DATABASE_URL: z.string().url().or(z.string().startsWith("postgresql://")).or(z.string().startsWith("file:")),
-  REDIS_URL: z.string().url().or(z.string().startsWith("redis://")),
+  REDIS_URL: z.string().optional().default(""),
   TELEGRAM_BOT_TOKEN: z.string().min(8),
   TELEGRAM_CHAT_ID: z.string().min(1),
   TELEGRAM_MIN_DELAY_MS: z.coerce.number().int().positive().default(1200),

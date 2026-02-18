@@ -1,27 +1,19 @@
-import "dotenv/config";
+import type { PrismaClient } from "@prisma/client";
+import type { Logger } from "pino";
 
 import {
-  QUEUE_NAMES,
-  buildLogger,
-  buildMetrics,
-  createQueue,
-  createWorker,
-  loadConfig,
   redactSensitiveText,
-  redactUnknown,
-  type NotifyItemJob,
-  type RetryFailedNotificationJob,
+  type AppConfig,
+  type Metrics,
   type SendDailySummaryJob,
 } from "@mercari-bot/core";
-import { createPrismaClient, initPrisma } from "@mercari-bot/db";
 
-const config = loadConfig();
-const logger = buildLogger(config.LOG_LEVEL);
-const metrics = buildMetrics();
-const prisma = createPrismaClient();
-void initPrisma(prisma);
-
-const notifyQueue = createQueue("notify-item", config.REDIS_URL);
+export interface NotifierDeps {
+  config: AppConfig;
+  logger: Logger;
+  metrics: Metrics;
+  prisma: PrismaClient;
+}
 
 let lastTelegramRequestAt = 0;
 
@@ -35,7 +27,7 @@ class TelegramError extends Error {
   }
 }
 
-async function waitForRateLimit(): Promise<void> {
+async function waitForRateLimit(config: AppConfig): Promise<void> {
   const elapsed = Date.now() - lastTelegramRequestAt;
   const waitMs = config.TELEGRAM_MIN_DELAY_MS - elapsed;
   if (waitMs > 0) {
@@ -43,11 +35,15 @@ async function waitForRateLimit(): Promise<void> {
   }
 }
 
-async function telegramPost(method: "sendMessage" | "sendPhoto", payload: Record<string, string>): Promise<any> {
+async function telegramPost(
+  config: AppConfig,
+  method: "sendMessage" | "sendPhoto",
+  payload: Record<string, string>,
+): Promise<any> {
   const endpoint = `https://api.telegram.org/bot${config.TELEGRAM_BOT_TOKEN}/${method}`;
 
   for (let attempt = 0; attempt <= config.TELEGRAM_MAX_RETRIES; attempt += 1) {
-    await waitForRateLimit();
+    await waitForRateLimit(config);
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -94,7 +90,9 @@ function truncateCaption(value: string, max = 1000): string {
   return `${value.slice(0, max - 1)}…`;
 }
 
-async function sendListingNotification(notificationId: string): Promise<void> {
+async function sendListingNotification(notificationId: string, deps: NotifierDeps): Promise<void> {
+  const { config, logger, metrics, prisma } = deps;
+
   const notification = await prisma.notification.findUnique({
     where: { id: notificationId },
     include: {
@@ -124,7 +122,7 @@ async function sendListingNotification(notificationId: string): Promise<void> {
   try {
     let telegramResponse: any;
     try {
-      telegramResponse = await telegramPost("sendPhoto", {
+      telegramResponse = await telegramPost(config, "sendPhoto", {
         chat_id: config.TELEGRAM_CHAT_ID,
         photo: notification.listing.imageUrl,
         caption,
@@ -136,7 +134,7 @@ async function sendListingNotification(notificationId: string): Promise<void> {
         throw error;
       }
 
-      telegramResponse = await telegramPost("sendMessage", {
+      telegramResponse = await telegramPost(config, "sendMessage", {
         chat_id: config.TELEGRAM_CHAT_ID,
         text: `${notification.listing.title}\n${notification.listing.rawPriceDisplay}\n${notification.listing.url}`,
       });
@@ -205,7 +203,9 @@ async function sendListingNotification(notificationId: string): Promise<void> {
   }
 }
 
-async function sendDailySummary(payload: SendDailySummaryJob): Promise<void> {
+export async function sendDailySummary(payload: SendDailySummaryJob, deps: NotifierDeps): Promise<void> {
+  const { config, prisma } = deps;
+
   const date = new Date(`${payload.dateUtc}T00:00:00.000Z`);
   const stats = await prisma.dailyKeywordCount.findMany({
     where: { dateUtc: date },
@@ -223,103 +223,69 @@ async function sendDailySummary(payload: SendDailySummaryJob): Promise<void> {
     }
   }
 
-  await telegramPost("sendMessage", {
+  await telegramPost(config, "sendMessage", {
     chat_id: config.TELEGRAM_CHAT_ID,
     text: lines.join("\n"),
   });
 }
 
-const notifyWorker = createWorker(
-  "notify-item",
-  config.REDIS_URL,
-  async (job) => {
-    const payload = job.data as NotifyItemJob;
-    const queueLatencySeconds = Math.max(0, (Date.now() - job.timestamp) / 1000);
-    metrics.queueJobLatencySeconds.labels("notify-item").observe(queueLatencySeconds);
-    await sendListingNotification(payload.itemId);
-  },
-  {
-    concurrency: 1,
-  },
-);
+const POLL_INTERVAL_MS = 2000;
+const RETRY_SWEEP_INTERVAL_MS = 60_000;
+const RETRY_COOLDOWN_MS = 30_000;
 
-const summaryWorker = createWorker(
-  "send-daily-summary",
-  config.REDIS_URL,
-  async (job) => {
-    const payload = job.data as SendDailySummaryJob;
-    const queueLatencySeconds = Math.max(0, (Date.now() - job.timestamp) / 1000);
-    metrics.queueJobLatencySeconds.labels("send-daily-summary").observe(queueLatencySeconds);
-    await sendDailySummary(payload);
-  },
-  {
-    concurrency: 1,
-  },
-);
+export function startNotificationProcessor(deps: NotifierDeps): { stop: () => void } {
+  const { config, logger, prisma } = deps;
+  let running = true;
+  let lastRetrySweep = 0;
 
-const retryWorker = createWorker(
-  "retry-failed-notification",
-  config.REDIS_URL,
-  async (job) => {
-    const payload = job.data as RetryFailedNotificationJob;
-    const queueLatencySeconds = Math.max(0, (Date.now() - job.timestamp) / 1000);
-    metrics.queueJobLatencySeconds.labels("retry-failed-notification").observe(queueLatencySeconds);
+  const loop = async () => {
+    while (running) {
+      try {
+        // Retry sweep: reset eligible failed notifications
+        if (Date.now() - lastRetrySweep >= RETRY_SWEEP_INTERVAL_MS) {
+          const cutoff = new Date(Date.now() - RETRY_COOLDOWN_MS);
+          await prisma.notification.updateMany({
+            where: {
+              status: "failed",
+              attemptCount: { lt: config.TELEGRAM_MAX_RETRIES + 1 },
+              updatedAt: { lt: cutoff },
+            },
+            data: { status: "pending" },
+          });
+          lastRetrySweep = Date.now();
+        }
 
-    const notification = await prisma.notification.findUnique({ where: { id: payload.notificationId } });
-    if (!notification) {
-      return;
+        // Poll for pending notifications
+        const pending = await prisma.notification.findFirst({
+          where: { status: "pending" },
+          orderBy: { createdAt: "asc" },
+        });
+
+        if (!pending) {
+          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+          continue;
+        }
+
+        try {
+          await sendListingNotification(pending.id, deps);
+        } catch (error) {
+          logger.error(
+            { notificationId: pending.id, error: String(error) },
+            "Notification send failed (will retry)",
+          );
+        }
+      } catch (error) {
+        logger.error({ error: String(error) }, "Notification processor loop error");
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      }
     }
+  };
 
-    await notifyQueue.add(
-      QUEUE_NAMES.notify,
-      {
-        itemId: payload.notificationId,
-        keywordId: notification.keywordId,
-        channel: "telegram",
-      },
-      {
-        removeOnComplete: true,
-        removeOnFail: 1000,
-        attempts: 3,
-      },
-    );
-  },
-  {
-    concurrency: 1,
-  },
-);
+  void loop();
 
-for (const worker of [notifyWorker, summaryWorker, retryWorker]) {
-  worker.on("failed", (job, error) => {
-    logger.error(
-      {
-        queue: worker.name,
-        jobId: job?.id,
-        error: redactUnknown(error),
-      },
-      "Notification worker job failed",
-    );
-  });
+  return {
+    stop() {
+      running = false;
+    },
+  };
 }
-
-metrics.activeWorkers.labels("notify").set(1);
-
-async function shutdown(): Promise<void> {
-  metrics.activeWorkers.labels("notify").set(0);
-  await Promise.all([notifyWorker.close(), summaryWorker.close(), retryWorker.close(), notifyQueue.close()]);
-  await prisma.$disconnect();
-}
-
-for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.on(signal, () => {
-    logger.info({ signal }, "Shutting down notify worker");
-    void shutdown().finally(() => process.exit(0));
-  });
-}
-
-logger.info(
-  {
-    queues: [QUEUE_NAMES.notify, QUEUE_NAMES.summary, QUEUE_NAMES.retryNotification],
-  },
-  "Notify worker started",
-);

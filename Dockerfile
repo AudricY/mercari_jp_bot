@@ -18,4 +18,4 @@ RUN pnpm install
 RUN pnpm run db:generate
 RUN pnpm run build
 
-CMD ["pnpm", "--filter", "@mercari-bot/api", "run", "start"]
+CMD ["pnpm", "--filter", "@mercari-bot/unified", "run", "start"]

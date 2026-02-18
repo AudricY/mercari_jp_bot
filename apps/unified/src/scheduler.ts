@@ -1,0 +1,160 @@
+import type { PrismaClient } from "@prisma/client";
+import type { Logger } from "pino";
+
+import {
+  parseDailySummaryTime,
+  redactUnknown,
+  utcDateString,
+  type AppConfig,
+  type Metrics,
+} from "@mercari-bot/core";
+import { getEnabledKeywords } from "@mercari-bot/db";
+
+import { scanKeyword } from "./scanner.js";
+import { sendDailySummary } from "./notifier.js";
+
+export interface SchedulerDeps {
+  config: AppConfig;
+  logger: Logger;
+  metrics: Metrics;
+  prisma: PrismaClient;
+}
+
+const lastKeywordSchedule = new Map<string, number>();
+let lastSummaryRunDate = "";
+
+function nowInTimezone(timezone: string): { hour: number; minute: number; date: string } {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(new Date());
+  const values: Record<string, string> = {};
+  for (const part of parts) {
+    values[part.type] = part.value;
+  }
+
+  return {
+    hour: Number.parseInt(values.hour ?? "0", 10),
+    minute: Number.parseInt(values.minute ?? "0", 10),
+    date: `${values.year}-${values.month}-${values.day}`,
+  };
+}
+
+async function getRuntimeSummarySettings(
+  prisma: PrismaClient,
+  config: AppConfig,
+): Promise<{ dailySummaryTime: string; displayTimezone: string }> {
+  const configs = await prisma.systemConfig.findMany({
+    where: {
+      key: {
+        in: ["daily_summary_time", "display_timezone"],
+      },
+    },
+  });
+
+  const map = new Map(configs.map((row) => [row.key, row.value]));
+
+  const dailySummaryTime =
+    typeof map.get("daily_summary_time") === "string" ? String(map.get("daily_summary_time")) : config.DAILY_SUMMARY_TIME;
+  const displayTimezone =
+    typeof map.get("display_timezone") === "string" ? String(map.get("display_timezone")) : config.DISPLAY_TIMEZONE;
+
+  return { dailySummaryTime, displayTimezone };
+}
+
+async function runKeywordScans(nowEpochSec: number, deps: SchedulerDeps): Promise<void> {
+  const { config, logger, prisma } = deps;
+  const keywords = await getEnabledKeywords(prisma);
+
+  const due = keywords.filter((keyword) => {
+    const last = lastKeywordSchedule.get(keyword.id) ?? 0;
+    return nowEpochSec - last >= keyword.intervalSec;
+  });
+
+  // Process in chunks capped by SCRAPE_CONCURRENCY
+  for (let i = 0; i < due.length; i += config.SCRAPE_CONCURRENCY) {
+    const chunk = due.slice(i, i + config.SCRAPE_CONCURRENCY);
+    await Promise.allSettled(
+      chunk.map(async (keyword) => {
+        lastKeywordSchedule.set(keyword.id, nowEpochSec);
+        try {
+          await scanKeyword(keyword.id, "scheduler", deps);
+        } catch (error) {
+          logger.error(
+            { keywordId: keyword.id, error: redactUnknown(error) },
+            "Scheduled scan failed",
+          );
+        }
+      }),
+    );
+  }
+}
+
+async function maybeRunDailySummary(nowEpochSec: number, deps: SchedulerDeps): Promise<void> {
+  const { config, logger, prisma } = deps;
+  const { dailySummaryTime, displayTimezone } = await getRuntimeSummarySettings(prisma, config);
+  const { hour, minute } = parseDailySummaryTime(dailySummaryTime);
+  const tzNow = nowInTimezone(displayTimezone);
+
+  if (tzNow.hour !== hour || tzNow.minute !== minute) {
+    return;
+  }
+
+  if (lastSummaryRunDate === tzNow.date) {
+    return;
+  }
+
+  lastSummaryRunDate = tzNow.date;
+
+  try {
+    await sendDailySummary(
+      {
+        dateUtc: utcDateString(new Date(nowEpochSec * 1000)),
+        timezone: displayTimezone,
+        channel: "telegram",
+      },
+      deps,
+    );
+  } catch (error) {
+    logger.error({ error: redactUnknown(error) }, "Daily summary failed");
+  }
+}
+
+async function tick(deps: SchedulerDeps): Promise<void> {
+  const nowEpochSec = Math.floor(Date.now() / 1000);
+
+  try {
+    await runKeywordScans(nowEpochSec, deps);
+    await maybeRunDailySummary(nowEpochSec, deps);
+  } catch (error) {
+    deps.logger.error({ error: redactUnknown(error) }, "Scheduler tick failed");
+  }
+}
+
+export function startScheduler(deps: SchedulerDeps): { stop: () => void } {
+  const { config, logger } = deps;
+
+  logger.info(
+    { tickSeconds: config.SCHEDULER_TICK_SECONDS },
+    "Scheduler started",
+  );
+
+  void tick(deps);
+
+  const interval = setInterval(() => {
+    void tick(deps);
+  }, config.SCHEDULER_TICK_SECONDS * 1000);
+
+  return {
+    stop() {
+      clearInterval(interval);
+    },
+  };
+}
