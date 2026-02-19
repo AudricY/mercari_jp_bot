@@ -17,6 +17,8 @@ const envSchema = z.object({
   SCRAPE_CONCURRENCY: z.coerce.number().int().positive().default(2),
   SCRAPE_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   SCRAPE_MAX_ITEMS_PER_TERM: z.coerce.number().int().positive().default(100),
+  SCRAPE_DETAIL_ENABLED: z.coerce.boolean().default(true),
+  SCRAPE_DETAIL_DELAY_MS: z.coerce.number().int().min(0).default(500),
   SCHEDULER_TICK_SECONDS: z.coerce.number().int().positive().default(30),
   DISPLAY_TIMEZONE: z.string().default("UTC"),
   DAILY_SUMMARY_TIME: z.string().regex(/^\d{2}:\d{2}$/).default("12:30"),

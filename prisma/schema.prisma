@@ -39,6 +39,7 @@ model Listing {
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
   rawJson         String?        @map("raw_json")
+  rawDetailJson   String?        @map("raw_detail_json")
   keywordId       String?        @map("keyword_id")
   keyword         Keyword?       @relation(fields: [keywordId], references: [id], onDelete: SetNull)
 

@@ -129,3 +129,32 @@ export async function scanMercariTerm(params: {
 
   return parsed;
 }
+
+const ITEM_DETAIL_URL = "https://api.mercari.jp/items/get";
+
+export async function fetchMercariItemDetail(params: {
+  itemId: string;
+  timeoutMs: number;
+}): Promise<string> {
+  const dpopToken = await generateDPoPToken(ITEM_DETAIL_URL, "GET");
+
+  const url = `${ITEM_DETAIL_URL}?id=${encodeURIComponent(params.itemId)}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "X-Platform": "web",
+      DPoP: dpopToken,
+    },
+    signal: AbortSignal.timeout(params.timeoutMs),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Mercari item detail API responded with ${response.status}: ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  return JSON.stringify(data);
+}

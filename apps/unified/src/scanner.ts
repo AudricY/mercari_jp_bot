@@ -1,9 +1,12 @@
 import type { PrismaClient } from "@prisma/client";
 import type { Logger } from "pino";
 
+import { setTimeout } from "node:timers/promises";
+
 import {
   buildDedupeKey,
   deriveSourceListingId,
+  fetchMercariItemDetail,
   redactUnknown,
   scanMercariTerm,
   type AppConfig,
@@ -162,6 +165,29 @@ export async function scanKeyword(
 
         if (!isNewOrCheaper) {
           continue;
+        }
+
+        if (config.SCRAPE_DETAIL_ENABLED && sourceListingId) {
+          try {
+            const rawDetailJson = await fetchMercariItemDetail({
+              itemId: sourceListingId,
+              timeoutMs: config.SCRAPE_HTTP_TIMEOUT_MS,
+            });
+            await prisma.listing.update({
+              where: { id: savedListing.id },
+              data: { rawDetailJson },
+            });
+          } catch (error) {
+            logger.warn(
+              {
+                listingId: savedListing.id,
+                sourceListingId,
+                error: redactUnknown(error),
+              },
+              "Failed to fetch item detail, continuing without it",
+            );
+          }
+          await setTimeout(config.SCRAPE_DETAIL_DELAY_MS);
         }
 
         itemsNew += 1;

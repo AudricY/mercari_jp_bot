@@ -27,6 +27,7 @@ export interface Listing {
   numericPrice: number;
   rawPriceDisplay: string;
   rawJson?: string;
+  rawDetailJson?: string;
   scrapedAt: Date;
 }
 
