@@ -53,7 +53,8 @@ async function runKeywordScans(nowEpochSec: number, deps: SchedulerDeps): Promis
 
   const due = keywords.filter((keyword) => {
     const last = lastKeywordSchedule.get(keyword.id) ?? 0;
-    return nowEpochSec - last >= keyword.intervalSec;
+    const jitter = Math.floor(Math.random() * 11) - 5; // ±5s
+    return nowEpochSec - last >= keyword.intervalSec + jitter;
   });
 
   // Process in chunks capped by SCRAPE_CONCURRENCY

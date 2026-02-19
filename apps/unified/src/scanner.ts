@@ -187,7 +187,8 @@ export async function scanKeyword(
               "Failed to fetch item detail, continuing without it",
             );
           }
-          await setTimeout(config.SCRAPE_DETAIL_DELAY_MS);
+          const jitteredDelay = Math.floor(config.SCRAPE_DETAIL_DELAY_MS * (0.6 + Math.random() * 0.8));
+          await setTimeout(jitteredDelay);
         }
 
         itemsNew += 1;

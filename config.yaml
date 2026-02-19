@@ -11,6 +11,8 @@ keywords:
     price_min: 4000
     price_max: 22000
     exclude_keyword: CECH
+    interval_sec: 30
   ps4:
     term: プレイステーション4 (PS4) 本体
     price_min: 7000
+    interval_sec: 30
