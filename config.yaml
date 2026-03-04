@@ -3,6 +3,7 @@
 # Use POST /v1/config/reload to hot-reload without restarting.
 
 keywords:
+  # ── Hardware ──
   ps3:
     term:
       - プレイステーション3 (PS3) 本体
@@ -16,3 +17,86 @@ keywords:
     term: プレイステーション4 (PS4) 本体
     price_min: 7000
     interval_sec: 30
+
+  # ── Switch Software ──
+  # 4 franchise searches cover ~30 games. Tested on Mercari API 2025-03-05.
+  # "franchise + Switch" filters out merchandise effectively.
+  # API returns max 100 results sorted by newest — broad enough to catch all
+  # sub-titles, narrow enough to exclude plushies/cards/accessories.
+
+  pokemon:
+    # Covers: Shield, Sword, Arceus, Let's Go Pikachu/Eevee, Shining Pearl,
+    # Brilliant Diamond, Scarlet, Violet, Scarlet+DLC, Violet+DLC
+    # Does NOT cover: ポケモンスナップ (different naming → separate term)
+    term:
+      - ポケットモンスター Switch
+      - ポケモンスナップ
+    price_max: 18000
+    interval_sec: 60
+
+  mario:
+    # Covers: Odyssey, Wonder, 3D World, 3D Collection, Kart 8, Party,
+    # Party Jamboree, NSMBU, Mario & Sonic Olympics, Paper Mario
+    # Does NOT cover: スマッシュブラザーズ, ルイージマンション (no "マリオ" in title)
+    term: マリオ ソフト Switch
+    price_max: 8500
+    interval_sec: 60
+
+  zelda:
+    # Covers: BotW, TotK, Link's Awakening — all confirmed in test
+    term: ゼルダの伝説 Switch
+    price_max: 5000
+    interval_sec: 60
+
+  kirby:
+    # Covers: Discovery, Star Allies, Wii Deluxe — all confirmed
+    term: 星のカービィ Switch
+    price_max: 4500
+    interval_sec: 90
+
+  # ── Games not covered by franchise searches ──
+  # Each term is a separate API call. Grouped under one keyword for config brevity.
+
+  switch_other:
+    term:
+      - 大乱闘スマッシュブラザーズ SPECIAL
+      - ルイージマンション3
+      - あつまれ どうぶつの森
+      - スプラトゥーン3
+    price_max: 5500
+    interval_sec: 90
+
+  switch_niche:
+    term:
+      - ピクミン4
+      - Xenoblade3
+      - ヨッシークラフトワールド
+      - スニッパーズ
+    price_max: 5000
+    interval_sec: 120
+
+  switch_niche2:
+    term:
+      - It Takes Two
+      - 超おどる メイドインワリオ
+      - Nintendo Switch Sports
+      - デイヴ・ザ・ダイバー
+      - 三國無双7 Switch
+      - Minecraft Switch
+      - マインクラフト ストーリーモード
+      - スターデューバレー
+      - ドンキーコング Switch
+    price_max: 9000
+    interval_sec: 120
+
+  # ── NS2 (Nintendo Switch 2) ──
+  ns2:
+    term:
+      - マリオカートワールド
+      - HADES II Switch
+      - サイバーパンク2077 Switch
+      - ドンキーコング バナンザ
+      - ゼルダの伝説 ブレスオブザワイルド Switch 2
+      - ゼルダの伝説 ティアーズ Switch 2
+    price_max: 8500
+    interval_sec: 90
