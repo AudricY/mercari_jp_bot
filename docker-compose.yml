@@ -1,6 +1,6 @@
 services:
   migrations:
-    build: .
+    image: ghcr.io/audricy/mercari-jp-bot:latest
     container_name: mercari-migrations
     env_file:
       - .env
@@ -11,7 +11,7 @@ services:
       - ./data:/app/data
 
   app:
-    build: .
+    image: ghcr.io/audricy/mercari-jp-bot:latest
     container_name: mercari-app
     env_file:
       - .env
