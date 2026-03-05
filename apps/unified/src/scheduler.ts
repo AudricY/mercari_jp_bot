@@ -105,34 +105,48 @@ async function maybeRunDailySummary(nowEpochSec: number, deps: SchedulerDeps): P
   }
 }
 
-async function tick(deps: SchedulerDeps): Promise<void> {
-  const nowEpochSec = Math.floor(Date.now() / 1000);
+let tickRunning = false;
 
+async function tick(deps: SchedulerDeps): Promise<void> {
+  if (tickRunning) {
+    deps.logger.warn("Scheduler tick skipped — previous tick still running");
+    return;
+  }
+  tickRunning = true;
   try {
+    const nowEpochSec = Math.floor(Date.now() / 1000);
     await runKeywordScans(nowEpochSec, deps);
     await maybeRunDailySummary(nowEpochSec, deps);
   } catch (error) {
     deps.logger.error({ error: redactUnknown(error) }, "Scheduler tick failed");
+  } finally {
+    tickRunning = false;
   }
 }
 
 export function startScheduler(deps: SchedulerDeps): { stop: () => void } {
   const { config, logger } = deps;
+  let stopped = false;
 
   logger.info(
     { tickSeconds: config.SCHEDULER_TICK_SECONDS },
     "Scheduler started",
   );
 
-  void tick(deps);
+  async function loop(): Promise<void> {
+    while (!stopped) {
+      await tick(deps);
+      if (!stopped) {
+        await new Promise((resolve) => setTimeout(resolve, config.SCHEDULER_TICK_SECONDS * 1000));
+      }
+    }
+  }
 
-  const interval = setInterval(() => {
-    void tick(deps);
-  }, config.SCHEDULER_TICK_SECONDS * 1000);
+  void loop();
 
   return {
     stop() {
-      clearInterval(interval);
+      stopped = true;
     },
   };
 }
