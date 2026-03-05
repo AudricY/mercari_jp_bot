@@ -5,6 +5,7 @@ interface ScanFilters {
   priceMax: number | null;
   titleMustContain: string[];
   excludeKeyword: string | null;
+  categoryId: number[];
 }
 
 export interface ScrapedListing {
@@ -56,7 +57,7 @@ export async function scanMercariTerm(params: {
       order: "ORDER_DESC",
       status: ["STATUS_ON_SALE"],
       sizeId: [],
-      categoryId: [],
+      categoryId: params.filters.categoryId.length > 0 ? params.filters.categoryId : [],
       brandId: [],
       sellerId: [],
       priceMin: params.filters.priceMin ?? 0,

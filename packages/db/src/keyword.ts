@@ -8,6 +8,7 @@ function parseFilters(raw: unknown): KeywordFilters {
     priceMax: null,
     titleMustContain: [],
     excludeKeyword: null,
+    categoryId: [],
   };
 
   if (!raw || typeof raw !== "object") {
@@ -24,6 +25,9 @@ function parseFilters(raw: unknown): KeywordFilters {
     priceMax: typeof asRecord.priceMax === "number" ? asRecord.priceMax : null,
     titleMustContain,
     excludeKeyword: typeof asRecord.excludeKeyword === "string" ? asRecord.excludeKeyword : null,
+    categoryId: Array.isArray(asRecord.categoryId)
+      ? asRecord.categoryId.filter((id): id is number => typeof id === "number")
+      : [],
   };
 }
 

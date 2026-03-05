@@ -10,6 +10,7 @@ const yamlKeywordSpecSchema = z.union([
     price_max: z.number().optional(),
     title_must_contain: z.union([z.string(), z.array(z.string())]).optional(),
     exclude_keyword: z.string().optional(),
+    category_id: z.union([z.number().int(), z.array(z.number().int())]).optional(),
     interval_sec: z.number().int().positive().optional(),
     topic: z.string().optional(),
   }),
@@ -27,6 +28,7 @@ export interface ParsedYamlKeyword {
     priceMax: number | null;
     titleMustContain: string[];
     excludeKeyword: string | null;
+    categoryId: number[];
   };
   intervalSec: number;
   topic: string | null;
@@ -55,6 +57,7 @@ export function parseYamlConfig(yamlContent: string): ParsedYamlKeyword[] {
       priceMax: null as number | null,
       titleMustContain: [] as string[],
       excludeKeyword: null as string | null,
+      categoryId: [] as number[],
     };
     let intervalSec = 60;
     let topic: string | null = null;
@@ -63,11 +66,13 @@ export function parseYamlConfig(yamlContent: string): ParsedYamlKeyword[] {
       terms = [spec];
     } else {
       terms = toTerms(spec.term ?? spec.search);
+      const rawCat = spec.category_id;
       filters = {
         priceMin: spec.price_min ?? null,
         priceMax: spec.price_max ?? null,
         titleMustContain: toStringArray(spec.title_must_contain),
         excludeKeyword: spec.exclude_keyword ?? null,
+        categoryId: rawCat == null ? [] : Array.isArray(rawCat) ? rawCat : [rawCat],
       };
       intervalSec = spec.interval_sec ?? 60;
       topic = spec.topic ?? null;

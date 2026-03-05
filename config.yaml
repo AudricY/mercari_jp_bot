@@ -13,11 +13,13 @@ keywords:
     price_min: 4000
     price_max: 22000
     exclude_keyword: CECH
+    category_id: 7091
     interval_sec: 30
   ps4:
     topic: Hardware
     term: プレイステーション4 (PS4) 本体
     price_min: 7000
+    category_id: 6988
     interval_sec: 30
 
   # ── Switch Software ──
@@ -35,6 +37,7 @@ keywords:
       - ポケットモンスター Switch
       - ポケモンスナップ
     price_max: 18000
+    category_id: 702
     interval_sec: 60
 
   mario:
@@ -44,6 +47,7 @@ keywords:
     # Does NOT cover: スマッシュブラザーズ, ルイージマンション (no "マリオ" in title)
     term: マリオ ソフト Switch
     price_max: 8500
+    category_id: 702
     interval_sec: 60
 
   zelda:
@@ -51,6 +55,7 @@ keywords:
     # Covers: BotW, TotK, Link's Awakening — all confirmed in test
     term: ゼルダの伝説 Switch
     price_max: 5000
+    category_id: 702
     interval_sec: 60
 
   kirby:
@@ -58,6 +63,7 @@ keywords:
     # Covers: Discovery, Star Allies, Wii Deluxe — all confirmed
     term: 星のカービィ Switch
     price_max: 4500
+    category_id: 702
     interval_sec: 90
 
   # ── Games not covered by franchise searches ──
@@ -71,6 +77,7 @@ keywords:
       - あつまれ どうぶつの森
       - スプラトゥーン3
     price_max: 5500
+    category_id: 702
     interval_sec: 90
 
   switch_niche:
@@ -81,6 +88,7 @@ keywords:
       - ヨッシークラフトワールド
       - スニッパーズ
     price_max: 5000
+    category_id: 702
     interval_sec: 120
 
   switch_niche2:
@@ -96,6 +104,7 @@ keywords:
       - スターデューバレー
       - ドンキーコング Switch
     price_max: 9000
+    category_id: 702
     interval_sec: 120
 
   # ── NS2 (Nintendo Switch 2) ──

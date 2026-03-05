@@ -25,6 +25,7 @@ function parseFilters(raw: unknown): {
   priceMax: number | null;
   titleMustContain: string[];
   excludeKeyword: string | null;
+  categoryId: number[];
 } {
   if (!raw || typeof raw !== "object") {
     return {
@@ -32,6 +33,7 @@ function parseFilters(raw: unknown): {
       priceMax: null,
       titleMustContain: [],
       excludeKeyword: null,
+      categoryId: [],
     };
   }
 
@@ -44,6 +46,9 @@ function parseFilters(raw: unknown): {
       ? row.titleMustContain.filter((term): term is string => typeof term === "string")
       : [],
     excludeKeyword: typeof row.excludeKeyword === "string" ? row.excludeKeyword : null,
+    categoryId: Array.isArray(row.categoryId)
+      ? row.categoryId.filter((id): id is number => typeof id === "number")
+      : [],
   };
 }
 

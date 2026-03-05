@@ -5,6 +5,7 @@ export interface KeywordFilters {
   priceMax: number | null;
   titleMustContain: string[];
   excludeKeyword: string | null;
+  categoryId: number[];
 }
 
 export interface KeywordConfig {
