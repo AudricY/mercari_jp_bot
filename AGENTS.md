@@ -13,7 +13,8 @@
 | Test | `pnpm run test` |
 | Dev mode | `pnpm --filter @mercari-bot/unified run dev` |
 | Start | `pnpm --filter @mercari-bot/unified run start` |
-| Docker up | `docker compose up --build` |
+| Deploy (build+push) | `docker build -t ghcr.io/audricy/mercari-jp-bot:latest . && docker push ghcr.io/audricy/mercari-jp-bot:latest` |
+| Deploy (VPS pull) | `ssh ubuntu@161.118.204.72 'cd ~/mercari_jp_bot && git pull && docker compose pull && docker compose down && docker compose up -d'` |
 | Reload keywords | `curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:3000/v1/config/reload` |
 
 ## What This Is
