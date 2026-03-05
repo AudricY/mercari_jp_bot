@@ -105,8 +105,13 @@ export function createApi(deps: ApiDeps) {
     };
   });
 
+  app.get("/v1/topics", async () => {
+    const topics = await prisma.telegramTopic.findMany({ orderBy: { topicName: "asc" } });
+    return { topics };
+  });
+
   app.post("/v1/config/reload", async () => {
-    const result = await syncConfigFromDisk(prisma, logger);
+    const result = await syncConfigFromDisk(prisma, logger, config);
     return { ok: true, ...result };
   });
 

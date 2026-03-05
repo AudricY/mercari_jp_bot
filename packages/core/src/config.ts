@@ -22,6 +22,7 @@ const envSchema = z.object({
   SCHEDULER_TICK_SECONDS: z.coerce.number().int().positive().default(30),
   DISPLAY_TIMEZONE: z.string().default("UTC"),
   DAILY_SUMMARY_TIME: z.string().regex(/^\d{2}:\d{2}$/).default("12:30"),
+  TELEGRAM_SUMMARY_TOPIC_NAME: z.string().default(""),
 });
 
 export type AppConfig = z.infer<typeof envSchema> & {

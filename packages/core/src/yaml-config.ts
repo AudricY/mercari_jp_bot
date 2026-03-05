@@ -11,6 +11,7 @@ const yamlKeywordSpecSchema = z.union([
     title_must_contain: z.union([z.string(), z.array(z.string())]).optional(),
     exclude_keyword: z.string().optional(),
     interval_sec: z.number().int().positive().optional(),
+    topic: z.string().optional(),
   }),
 ]);
 
@@ -28,6 +29,7 @@ export interface ParsedYamlKeyword {
     excludeKeyword: string | null;
   };
   intervalSec: number;
+  topic: string | null;
 }
 
 function toTerms(value: string | string[] | undefined): string[] {
@@ -55,6 +57,7 @@ export function parseYamlConfig(yamlContent: string): ParsedYamlKeyword[] {
       excludeKeyword: null as string | null,
     };
     let intervalSec = 60;
+    let topic: string | null = null;
 
     if (typeof spec === "string") {
       terms = [spec];
@@ -67,11 +70,12 @@ export function parseYamlConfig(yamlContent: string): ParsedYamlKeyword[] {
         excludeKeyword: spec.exclude_keyword ?? null,
       };
       intervalSec = spec.interval_sec ?? 60;
+      topic = spec.topic ?? null;
     }
 
     if (terms.length === 0) continue;
 
-    results.push({ name, terms, filters, intervalSec });
+    results.push({ name, terms, filters, intervalSec, topic });
   }
 
   return results;

@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import type { Logger } from "pino";
 
 import {
+  lookupTopicThreadId,
   redactSensitiveText,
   type AppConfig,
   type Metrics,
@@ -38,9 +39,13 @@ async function waitForRateLimit(config: AppConfig): Promise<void> {
 async function telegramPost(
   config: AppConfig,
   method: "sendMessage" | "sendPhoto",
-  payload: Record<string, string>,
+  payload: Record<string, string | number>,
 ): Promise<any> {
   const endpoint = `https://api.telegram.org/bot${config.TELEGRAM_BOT_TOKEN}/${method}`;
+  const stringPayload: Record<string, string> = {};
+  for (const [k, v] of Object.entries(payload)) {
+    stringPayload[k] = String(v);
+  }
 
   for (let attempt = 0; attempt <= config.TELEGRAM_MAX_RETRIES; attempt += 1) {
     await waitForRateLimit(config);
@@ -50,7 +55,7 @@ async function telegramPost(
       headers: {
         "content-type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams(payload).toString(),
+      body: new URLSearchParams(stringPayload).toString(),
     });
 
     lastTelegramRequestAt = Date.now();
@@ -119,25 +124,50 @@ async function sendListingNotification(notificationId: string, deps: NotifierDep
     `<b>${notification.listing.title}</b>\nPrice: ${notification.listing.rawPriceDisplay}\nTime: ${notification.listing.scrapedAt.toISOString()}\n${notification.listing.url}`,
   );
 
+  // Resolve topic thread_id for this keyword
+  const threadId = await lookupTopicThreadId(
+    notification.keyword?.topicName ?? null,
+    config.TELEGRAM_CHAT_ID,
+    prisma,
+  );
+
   try {
     let telegramResponse: any;
+    const basePhotoPayload: Record<string, string | number> = {
+      chat_id: config.TELEGRAM_CHAT_ID,
+      photo: notification.listing.imageUrl,
+      caption,
+      parse_mode: "HTML",
+    };
+    const baseTextPayload: Record<string, string | number> = {
+      chat_id: config.TELEGRAM_CHAT_ID,
+      text: `${notification.listing.title}\n${notification.listing.rawPriceDisplay}\n${notification.listing.url}`,
+    };
+
+    if (threadId) {
+      basePhotoPayload.message_thread_id = threadId;
+      baseTextPayload.message_thread_id = threadId;
+    }
+
     try {
-      telegramResponse = await telegramPost(config, "sendPhoto", {
-        chat_id: config.TELEGRAM_CHAT_ID,
-        photo: notification.listing.imageUrl,
-        caption,
-        parse_mode: "HTML",
-      });
+      telegramResponse = await telegramPost(config, "sendPhoto", basePhotoPayload);
     } catch (error) {
       const canFallback = error instanceof TelegramError && error.status >= 400 && error.status < 500 && error.status !== 429;
       if (!canFallback) {
         throw error;
       }
 
-      telegramResponse = await telegramPost(config, "sendMessage", {
-        chat_id: config.TELEGRAM_CHAT_ID,
-        text: `${notification.listing.title}\n${notification.listing.rawPriceDisplay}\n${notification.listing.url}`,
-      });
+      try {
+        telegramResponse = await telegramPost(config, "sendMessage", baseTextPayload);
+      } catch (fallbackError) {
+        // If thread_id caused the error, retry without it (send to General)
+        if (threadId && fallbackError instanceof TelegramError && fallbackError.status === 400) {
+          const { message_thread_id: _, ...noThreadPayload } = baseTextPayload;
+          telegramResponse = await telegramPost(config, "sendMessage", noThreadPayload);
+        } else {
+          throw fallbackError;
+        }
+      }
     }
 
     await prisma.$transaction([
@@ -223,10 +253,23 @@ export async function sendDailySummary(payload: SendDailySummaryJob, deps: Notif
     }
   }
 
-  await telegramPost(config, "sendMessage", {
+  const summaryPayload: Record<string, string | number> = {
     chat_id: config.TELEGRAM_CHAT_ID,
     text: lines.join("\n"),
-  });
+  };
+
+  if (config.TELEGRAM_SUMMARY_TOPIC_NAME) {
+    const summaryThreadId = await lookupTopicThreadId(
+      config.TELEGRAM_SUMMARY_TOPIC_NAME,
+      config.TELEGRAM_CHAT_ID,
+      prisma,
+    );
+    if (summaryThreadId) {
+      summaryPayload.message_thread_id = summaryThreadId;
+    }
+  }
+
+  await telegramPost(config, "sendMessage", summaryPayload);
 }
 
 const POLL_INTERVAL_MS = 2000;

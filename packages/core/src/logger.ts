@@ -1,5 +1,7 @@
 import pino, { type Logger } from "pino";
 
+export type { Logger };
+
 import { redactSensitiveText } from "./redact.js";
 
 export function buildLogger(level: string): Logger {

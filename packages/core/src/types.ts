@@ -14,6 +14,7 @@ export interface KeywordConfig {
   terms: string[];
   filters: KeywordFilters;
   intervalSec: number;
+  topicName: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

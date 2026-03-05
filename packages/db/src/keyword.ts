@@ -43,6 +43,7 @@ export function mapKeyword(model: Keyword): KeywordConfig {
     terms: parseTerms(model.terms),
     filters: parseFilters(model.filters),
     intervalSec: model.intervalSec,
+    topicName: model.topicName ?? null,
     createdAt: model.createdAt,
     updatedAt: model.updatedAt,
   };

@@ -8,5 +8,6 @@ export * from "./price.js";
 export * from "./redact.js";
 export * from "./scrape.js";
 export * from "./time.js";
+export * from "./telegram-topics.js";
 export * from "./types.js";
 export * from "./yaml-config.js";

@@ -5,6 +5,7 @@
 keywords:
   # ── Hardware ──
   ps3:
+    topic: Hardware
     term:
       - プレイステーション3 (PS3) 本体
       - Playstation 3
@@ -14,6 +15,7 @@ keywords:
     exclude_keyword: CECH
     interval_sec: 30
   ps4:
+    topic: Hardware
     term: プレイステーション4 (PS4) 本体
     price_min: 7000
     interval_sec: 30
@@ -25,6 +27,7 @@ keywords:
   # sub-titles, narrow enough to exclude plushies/cards/accessories.
 
   pokemon:
+    topic: Switch Games
     # Covers: Shield, Sword, Arceus, Let's Go Pikachu/Eevee, Shining Pearl,
     # Brilliant Diamond, Scarlet, Violet, Scarlet+DLC, Violet+DLC
     # Does NOT cover: ポケモンスナップ (different naming → separate term)
@@ -35,6 +38,7 @@ keywords:
     interval_sec: 60
 
   mario:
+    topic: Switch Games
     # Covers: Odyssey, Wonder, 3D World, 3D Collection, Kart 8, Party,
     # Party Jamboree, NSMBU, Mario & Sonic Olympics, Paper Mario
     # Does NOT cover: スマッシュブラザーズ, ルイージマンション (no "マリオ" in title)
@@ -43,12 +47,14 @@ keywords:
     interval_sec: 60
 
   zelda:
+    topic: Switch Games
     # Covers: BotW, TotK, Link's Awakening — all confirmed in test
     term: ゼルダの伝説 Switch
     price_max: 5000
     interval_sec: 60
 
   kirby:
+    topic: Switch Games
     # Covers: Discovery, Star Allies, Wii Deluxe — all confirmed
     term: 星のカービィ Switch
     price_max: 4500
@@ -58,6 +64,7 @@ keywords:
   # Each term is a separate API call. Grouped under one keyword for config brevity.
 
   switch_other:
+    topic: Switch Games
     term:
       - 大乱闘スマッシュブラザーズ SPECIAL
       - ルイージマンション3
@@ -67,6 +74,7 @@ keywords:
     interval_sec: 90
 
   switch_niche:
+    topic: Switch Games
     term:
       - ピクミン4
       - Xenoblade3
@@ -76,6 +84,7 @@ keywords:
     interval_sec: 120
 
   switch_niche2:
+    topic: Switch Games
     term:
       - It Takes Two
       - 超おどる メイドインワリオ
@@ -91,6 +100,7 @@ keywords:
 
   # ── NS2 (Nintendo Switch 2) ──
   ns2:
+    topic: NS2
     term:
       - マリオカートワールド
       - HADES II Switch

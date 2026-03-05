@@ -14,9 +14,12 @@ model Keyword {
   terms       Json
   filters     Json
   intervalSec Int       @default(60) @map("interval_sec")
+  topicName   String?   @map("topic_name")
+  topicId     String?   @map("topic_id")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
+  topic       TelegramTopic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
   listings    Listing[]
   seen        SeenListing[]
   scanRuns    ScanRun[]
@@ -24,6 +27,20 @@ model Keyword {
   dailyCounts DailyKeywordCount[]
 
   @@map("keywords")
+}
+
+model TelegramTopic {
+  id        String   @id @default(uuid())
+  chatId    String   @map("chat_id")
+  topicName String   @map("topic_name")
+  threadId  Int      @map("thread_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  keywords  Keyword[]
+
+  @@unique([chatId, topicName])
+  @@map("telegram_topics")
 }
 
 model Listing {

@@ -17,7 +17,7 @@ const deps = { config, logger, metrics, prisma };
 
 async function main(): Promise<void> {
   await initPrisma(prisma);
-  await syncConfigFromDisk(prisma, logger);
+  await syncConfigFromDisk(prisma, logger, config);
 
   const app = createApi(deps);
   await app.listen({ host: "0.0.0.0", port: config.PORT });
