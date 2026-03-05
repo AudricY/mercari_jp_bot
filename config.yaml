@@ -32,10 +32,10 @@ keywords:
     topic: Switch Games
     # Covers: Shield, Sword, Arceus, Let's Go Pikachu/Eevee, Shining Pearl,
     # Brilliant Diamond, Scarlet, Violet, Scarlet+DLC, Violet+DLC
-    # Does NOT cover: ポケモンスナップ (different naming → separate term)
+    # Does NOT cover: Newポケモンスナップ (different naming → separate term)
     term:
       - ポケットモンスター Switch
-      - ポケモンスナップ
+      - Newポケモンスナップ
     price_max: 18000
     category_id: 702
     interval_sec: 60
