@@ -76,6 +76,7 @@ Production migrations run automatically via Docker Compose (`prisma migrate depl
 - **Prisma `file:` paths** resolve relative to `prisma/schema.prisma`, not cwd. Docker overrides to absolute `file:/app/data/mercari.db`.
 - **`node:22-slim` needs OpenSSL** — Dockerfile installs it for Prisma.
 - **`pnpm --filter` sets cwd** to the package dir (`apps/unified/`), not repo root. Use `CONFIG_PATH` env var.
+- **`title_must_contain` is OR-based.** It matches if any listed token appears in the title, so search-term specificity usually matters more than adding many required tokens.
 
 ## Ops Docs
 
