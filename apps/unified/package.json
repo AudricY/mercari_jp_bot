@@ -9,7 +9,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'no tests for @mercari-bot/unified yet'",
+    "test": "vitest run",
     "lint": "echo 'no lint configured for @mercari-bot/unified'"
   },
   "dependencies": {
@@ -18,5 +18,8 @@
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",
     "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.5"
   }
 }
