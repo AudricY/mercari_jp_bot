@@ -1,4 +1,5 @@
 import { getPriceDistribution, getTimeseries, getListings } from "@/lib/api";
+import { requireAnalyticsSession } from "@/lib/auth";
 import { formatPrice, formatDateTime } from "@/lib/format";
 import { Histogram, PriceTrendChart, VolumeChart } from "@/components/PriceChart";
 import Link from "next/link";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default async function KeywordDetailPage({ params, searchParams }: Props) {
+  await requireAnalyticsSession();
   const { id } = await params;
   const sp = await searchParams;
   const granularity = sp.granularity ?? "day";

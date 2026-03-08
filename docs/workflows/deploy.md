@@ -1,6 +1,6 @@
 # Deployment
 
-Docker Compose on Oracle Cloud VPS. Two services from one image: `migrations` (runs once) then `app` (long-running).
+Docker Compose on Oracle Cloud VPS. Three services from one image: `migrations` (runs once), `app` (long-running), and `analytics` (private web UI on port `3001`).
 
 Images are built locally and pushed to GHCR (`ghcr.io/audricy/mercari-jp-bot`). The VPS only pulls — no building on the 1GB RAM machine.
 
@@ -20,7 +20,20 @@ Images are built locally and pushed to GHCR (`ghcr.io/audricy/mercari-jp-bot`). 
    ```bash
    ssh ubuntu@161.118.204.72 'curl -sf http://localhost:3000/v1/health/live'
    ssh ubuntu@161.118.204.72 'docker compose -f ~/mercari_jp_bot/docker-compose.yml logs -f app --tail 30'
+   ssh ubuntu@161.118.204.72 'docker compose -f ~/mercari_jp_bot/docker-compose.yml logs -f analytics --tail 30'
    ```
+
+## Analytics Auth
+
+The analytics web app uses its own login credentials and signed session cookie. Set these in `.env` before deploying:
+
+```bash
+ANALYTICS_AUTH_USER=analytics
+ANALYTICS_AUTH_PASSWORD=<strong-password>
+ANALYTICS_SESSION_PASSWORD=<32+ character random secret>
+```
+
+The analytics app should stay private even with app-level auth. Prefer keeping port `3001` restricted at the firewall or reverse proxy layer.
 
 ## Rollback
 
