@@ -45,3 +45,16 @@ export function buildLoginRedirectPath(nextPath: string): string {
 
   return `/login?next=${encodeURIComponent(safeNextPath)}`;
 }
+
+export function buildExternalUrl(request: Request, path: string): URL {
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const host = request.headers.get("host")?.split(",")[0]?.trim();
+  const origin = forwardedHost
+    ? `${forwardedProto ?? "http"}://${forwardedHost}`
+    : host
+      ? `${forwardedProto ?? new URL(request.url).protocol.replace(":", "")}://${host}`
+      : new URL(request.url).origin;
+
+  return new URL(path, origin);
+}

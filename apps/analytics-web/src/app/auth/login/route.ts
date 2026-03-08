@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getIronSession } from "iron-session";
 
-import { getAnalyticsAuthConfig, sanitizeNextPath } from "../../../lib/auth-shared";
+import { buildExternalUrl, getAnalyticsAuthConfig, sanitizeNextPath } from "../../../lib/auth-shared";
 import { getAnalyticsSessionOptions, type AnalyticsSessionData, validateAnalyticsCredentials } from "../../../lib/auth";
 
 export async function POST(request: Request) {
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   const nextPath = sanitizeNextPath(String(formData.get("next") ?? "/"));
 
   if (!validateAnalyticsCredentials({ username, password })) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = buildExternalUrl(request, "/login");
     loginUrl.searchParams.set("error", "invalid");
     if (nextPath !== "/") {
       loginUrl.searchParams.set("next", nextPath);
@@ -33,5 +33,5 @@ export async function POST(request: Request) {
   session.username = config.username;
   await session.save();
 
-  return NextResponse.redirect(new URL(nextPath, request.url), 303);
+  return NextResponse.redirect(buildExternalUrl(request, nextPath), 303);
 }

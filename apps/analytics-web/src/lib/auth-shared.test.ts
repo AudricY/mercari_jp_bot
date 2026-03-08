@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildLoginRedirectPath, getAnalyticsAuthConfig, sanitizeNextPath } from "./auth-shared";
+import { buildExternalUrl, buildLoginRedirectPath, getAnalyticsAuthConfig, sanitizeNextPath } from "./auth-shared";
 
 describe("analytics auth shared helpers", () => {
   it("reads auth config from env", () => {
@@ -48,5 +48,16 @@ describe("analytics auth shared helpers", () => {
     expect(buildLoginRedirectPath("/keywords/abc?sort=cheapest")).toBe(
       "/login?next=%2Fkeywords%2Fabc%3Fsort%3Dcheapest",
     );
+  });
+
+  it("builds external urls from forwarded headers", () => {
+    const request = new Request("http://localhost:3001/auth/login", {
+      headers: {
+        "x-forwarded-proto": "http",
+        "x-forwarded-host": "161.118.204.72:3001",
+      },
+    });
+
+    expect(buildExternalUrl(request, "/")).toEqual(new URL("http://161.118.204.72:3001/"));
   });
 });
