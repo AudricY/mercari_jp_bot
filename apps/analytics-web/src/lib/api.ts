@@ -10,7 +10,10 @@ async function apiFetch<T>(path: string, params?: Record<string, string | undefi
   }
 
   const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${API_TOKEN}` },
+    headers: {
+      Authorization: `Bearer ${API_TOKEN}`,
+      "X-Forwarded-For": "127.0.0.1",
+    },
     next: { revalidate: 60 },
   });
 
