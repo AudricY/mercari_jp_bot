@@ -30,6 +30,10 @@ playwright-report/
 .DS_Store
 Thumbs.db
 
+# Next.js
+.next/
+out/
+
 # IDE
 .idea/
 .vscode/

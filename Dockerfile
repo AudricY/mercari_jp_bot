@@ -11,6 +11,7 @@ RUN npm install -g pnpm@10.22.0
 # Install dependencies first (cached unless lockfile/workspace config changes)
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/unified/package.json ./apps/unified/
+COPY apps/analytics-web/package.json ./apps/analytics-web/
 COPY packages/core/package.json ./packages/core/
 COPY packages/db/package.json ./packages/db/
 RUN pnpm install --frozen-lockfile

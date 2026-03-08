@@ -117,6 +117,8 @@ export async function scanKeyword(
           imageUrl: listing.imageUrl,
         });
 
+        const now = new Date();
+
         const savedListing = await prisma.listing.upsert({
           where: { url: listing.url },
           create: {
@@ -128,7 +130,7 @@ export async function scanKeyword(
             numericPrice: listing.numericPrice,
             rawPriceDisplay: listing.rawPriceDisplay,
             rawJson: listing.rawJson,
-            scrapedAt: new Date(),
+            scrapedAt: now,
             keywordId: keyword.id,
           },
           update: {
@@ -138,7 +140,23 @@ export async function scanKeyword(
             numericPrice: listing.numericPrice,
             rawPriceDisplay: listing.rawPriceDisplay,
             rawJson: listing.rawJson,
-            scrapedAt: new Date(),
+            scrapedAt: now,
+          },
+        });
+
+        // Write observation for analytics regardless of dedup outcome
+        await prisma.listingObservation.create({
+          data: {
+            keywordId: keyword.id,
+            listingId: savedListing.id,
+            sourceListingId,
+            listingUrl: listing.url,
+            title: listing.title,
+            imageUrl: listing.imageUrl,
+            currency: listing.currency,
+            numericPrice: listing.numericPrice,
+            rawPriceDisplay: listing.rawPriceDisplay,
+            observedAt: now,
           },
         });
 

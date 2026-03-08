@@ -25,6 +25,7 @@ model Keyword {
   scanRuns    ScanRun[]
   notifications Notification[]
   dailyCounts DailyKeywordCount[]
+  observations ListingObservation[]
 
   @@map("keywords")
 }
@@ -115,6 +116,28 @@ model Notification {
 
   @@index([keywordId, channel, status])
   @@map("notifications")
+}
+
+model ListingObservation {
+  id              String   @id @default(uuid())
+  keywordId       String   @map("keyword_id")
+  listingId       String?  @map("listing_id")
+  sourceListingId String?  @map("source_listing_id")
+  listingUrl      String   @map("listing_url")
+  title           String
+  imageUrl        String   @map("image_url")
+  currency        String
+  numericPrice    Decimal  @map("numeric_price")
+  rawPriceDisplay String   @map("raw_price_display")
+  observedAt      DateTime @map("observed_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  keyword Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@index([keywordId, observedAt])
+  @@index([keywordId, numericPrice, observedAt])
+  @@index([sourceListingId])
+  @@map("listing_observations")
 }
 
 model DailyKeywordCount {

@@ -4,6 +4,7 @@ import type { Logger } from "pino";
 
 import { redactUnknown, type AppConfig, type Metrics } from "@mercari-bot/core";
 
+import { registerAnalyticsRoutes } from "./analytics.js";
 import { assertAdminAccess } from "./auth.js";
 import { scanKeyword } from "./scanner.js";
 import { syncConfigFromDisk } from "./sync.js";
@@ -109,6 +110,8 @@ export function createApi(deps: ApiDeps) {
     const topics = await prisma.telegramTopic.findMany({ orderBy: { topicName: "asc" } });
     return { topics };
   });
+
+  registerAnalyticsRoutes(app, { prisma });
 
   app.post("/v1/config/reload", async () => {
     const result = await syncConfigFromDisk(prisma, logger, config);

@@ -28,3 +28,21 @@ services:
     volumes:
       - ./data:/app/data
       - ./config.yaml:/app/config.yaml:ro
+
+  analytics:
+    image: ghcr.io/audricy/mercari-jp-bot:latest
+    container_name: mercari-analytics
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "file:/app/data/mercari.db"
+      ANALYTICS_API_URL: "http://app:3000"
+    command: ["pnpm", "--filter", "@mercari-bot/analytics-web", "run", "start"]
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data
