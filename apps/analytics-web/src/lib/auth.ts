@@ -32,7 +32,8 @@ export function getAnalyticsSessionOptions(): SessionOptions {
       httpOnly: true,
       sameSite: "lax",
       path: "/",
-      secure: process.env.NODE_ENV === "production",
+      // This deployment is currently plain HTTP on the VPS, not behind TLS.
+      secure: false,
     },
   };
 }
