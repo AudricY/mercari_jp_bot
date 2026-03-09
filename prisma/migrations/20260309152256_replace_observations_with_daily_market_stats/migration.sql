@@ -15,16 +15,16 @@ CREATE TABLE "daily_keyword_market_stats" (
 WITH ranked AS (
     SELECT
         "keyword_id",
-        strftime('%Y-%m-%dT00:00:00.000Z', "observed_at") AS "date_utc",
+        (CAST("observed_at" AS INTEGER) / 86400000) * 86400000 AS "date_utc",
         COALESCE("source_listing_id", "listing_url") AS "listing_key",
         CAST("numeric_price" AS REAL) AS "numeric_price",
-        "observed_at",
+        CAST("observed_at" AS INTEGER) AS "observed_at",
         ROW_NUMBER() OVER (
-            PARTITION BY "keyword_id", strftime('%Y-%m-%d', "observed_at")
+            PARTITION BY "keyword_id", (CAST("observed_at" AS INTEGER) / 86400000)
             ORDER BY CAST("numeric_price" AS REAL)
         ) AS "row_num",
         COUNT(*) OVER (
-            PARTITION BY "keyword_id", strftime('%Y-%m-%d', "observed_at")
+            PARTITION BY "keyword_id", (CAST("observed_at" AS INTEGER) / 86400000)
         ) AS "row_count"
     FROM "listing_observations"
 ),
