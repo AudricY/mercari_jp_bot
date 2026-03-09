@@ -13,7 +13,7 @@ export default async function OverviewPage() {
     <div>
       <h1 style={{ fontSize: 24, marginBottom: 8 }}>Keywords Overview</h1>
       <p style={{ color: "#a3a3a3", marginBottom: 24, fontSize: 14 }}>
-        Last 30 days &middot; {data.keywords.length} keywords
+        Current tracked listings &middot; {data.keywords.length} keywords
       </p>
 
       <div style={{ overflowX: "auto" }}>
@@ -21,8 +21,7 @@ export default async function OverviewPage() {
           <thead>
             <tr style={{ borderBottom: "1px solid #262626", textAlign: "left" }}>
               <th style={thStyle}>Keyword</th>
-              <th style={thStyleRight}>Observations</th>
-              <th style={thStyleRight}>Unique Listings</th>
+              <th style={thStyleRight}>Listings</th>
               <th style={thStyleRight}>Median Price</th>
               <th style={thStyleRight}>Min</th>
               <th style={thStyleRight}>Max</th>
@@ -37,12 +36,11 @@ export default async function OverviewPage() {
                     {kw.keywordName}
                   </Link>
                 </td>
-                <td style={tdStyleRight}>{kw.observationCount.toLocaleString()}</td>
-                <td style={tdStyleRight}>{kw.uniqueListingCount.toLocaleString()}</td>
-                <td style={tdStyleRight}>{kw.observationCount > 0 ? formatPrice(kw.medianPrice) : "—"}</td>
-                <td style={tdStyleRight}>{kw.observationCount > 0 ? formatPrice(kw.minPrice) : "—"}</td>
-                <td style={tdStyleRight}>{kw.observationCount > 0 ? formatPrice(kw.maxPrice) : "—"}</td>
-                <td style={tdStyleRight}>{kw.latestObservedAt ? formatDateTime(kw.latestObservedAt) : "—"}</td>
+                <td style={tdStyleRight}>{kw.listingCount.toLocaleString()}</td>
+                <td style={tdStyleRight}>{kw.listingCount > 0 ? formatPrice(kw.medianPrice) : "—"}</td>
+                <td style={tdStyleRight}>{kw.listingCount > 0 ? formatPrice(kw.minPrice) : "—"}</td>
+                <td style={tdStyleRight}>{kw.listingCount > 0 ? formatPrice(kw.maxPrice) : "—"}</td>
+                <td style={tdStyleRight}>{kw.latestScrapedAt ? formatDateTime(kw.latestScrapedAt) : "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -51,7 +49,7 @@ export default async function OverviewPage() {
 
       {data.keywords.length === 0 && (
         <p style={{ color: "#737373", textAlign: "center", marginTop: 48 }}>
-          No observation data yet. Data will appear after the bot starts scanning.
+          No current listing data yet. Data will appear after the bot starts scanning.
         </p>
       )}
     </div>

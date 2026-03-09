@@ -8,24 +8,24 @@ datasource db {
 }
 
 model Keyword {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  enabled     Boolean   @default(true)
-  terms       Json
-  filters     Json
-  intervalSec Int       @default(60) @map("interval_sec")
-  topicName   String?   @map("topic_name")
-  topicId     String?   @map("topic_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id           String                  @id @default(uuid())
+  name         String                  @unique
+  enabled      Boolean                 @default(true)
+  terms        Json
+  filters      Json
+  intervalSec  Int                     @default(60) @map("interval_sec")
+  topicName    String?                 @map("topic_name")
+  topicId      String?                 @map("topic_id")
+  createdAt    DateTime                @default(now()) @map("created_at")
+  updatedAt    DateTime                @updatedAt @map("updated_at")
 
-  topic       TelegramTopic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
-  listings    Listing[]
-  seen        SeenListing[]
-  scanRuns    ScanRun[]
+  topic        TelegramTopic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  listings     Listing[]
+  seen         SeenListing[]
+  scanRuns     ScanRun[]
   notifications Notification[]
-  dailyCounts DailyKeywordCount[]
-  observations ListingObservation[]
+  dailyCounts  DailyKeywordCount[]
+  marketStats  DailyKeywordMarketStat[]
 
   @@map("keywords")
 }
@@ -118,28 +118,6 @@ model Notification {
   @@map("notifications")
 }
 
-model ListingObservation {
-  id              String   @id @default(uuid())
-  keywordId       String   @map("keyword_id")
-  listingId       String?  @map("listing_id")
-  sourceListingId String?  @map("source_listing_id")
-  listingUrl      String   @map("listing_url")
-  title           String
-  imageUrl        String   @map("image_url")
-  currency        String
-  numericPrice    Decimal  @map("numeric_price")
-  rawPriceDisplay String   @map("raw_price_display")
-  observedAt      DateTime @map("observed_at")
-  createdAt       DateTime @default(now()) @map("created_at")
-
-  keyword Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
-
-  @@index([keywordId, observedAt])
-  @@index([keywordId, numericPrice, observedAt])
-  @@index([sourceListingId])
-  @@map("listing_observations")
-}
-
 model DailyKeywordCount {
   dateUtc    DateTime @map("date_utc")
   keywordId  String   @map("keyword_id")
@@ -149,4 +127,19 @@ model DailyKeywordCount {
 
   @@id([dateUtc, keywordId])
   @@map("daily_keyword_counts")
+}
+
+model DailyKeywordMarketStat {
+  dateUtc         DateTime @map("date_utc")
+  keywordId       String   @map("keyword_id")
+  listingCount    Int      @map("listing_count")
+  minPrice        Decimal  @map("min_price")
+  medianPrice     Decimal  @map("median_price")
+  maxPrice        Decimal  @map("max_price")
+  latestScrapedAt DateTime @map("latest_scraped_at")
+
+  keyword         Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@id([dateUtc, keywordId])
+  @@map("daily_keyword_market_stats")
 }

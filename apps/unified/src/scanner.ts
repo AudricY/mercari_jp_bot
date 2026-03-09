@@ -144,22 +144,6 @@ export async function scanKeyword(
           },
         });
 
-        // Write observation for analytics regardless of dedup outcome
-        await prisma.listingObservation.create({
-          data: {
-            keywordId: keyword.id,
-            listingId: savedListing.id,
-            sourceListingId,
-            listingUrl: listing.url,
-            title: listing.title,
-            imageUrl: listing.imageUrl,
-            currency: listing.currency,
-            numericPrice: listing.numericPrice,
-            rawPriceDisplay: listing.rawPriceDisplay,
-            observedAt: now,
-          },
-        });
-
         const seen = await prisma.seenListing.findUnique({ where: { dedupeKey } });
         const isNewOrCheaper = !seen || Number(seen.lastPrice) > listing.numericPrice;
 

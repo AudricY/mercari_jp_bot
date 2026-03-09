@@ -10,6 +10,7 @@ import {
 } from "@mercari-bot/core";
 import { getEnabledKeywords } from "@mercari-bot/db";
 
+import { pruneOldScanRuns, refreshDailyKeywordMarketStats } from "./market-stats.js";
 import { scanKeyword } from "./scanner.js";
 import { sendDailySummary } from "./notifier.js";
 
@@ -22,6 +23,7 @@ export interface SchedulerDeps {
 
 const lastKeywordSchedule = new Map<string, number>();
 let lastSummaryRunDate = "";
+let lastMaintenanceRunDate = "";
 
 function nowInTimezone(timezone: string): { hour: number; minute: number; date: string } {
   const formatter = new Intl.DateTimeFormat("en-CA", {
@@ -105,6 +107,35 @@ async function maybeRunDailySummary(nowEpochSec: number, deps: SchedulerDeps): P
   }
 }
 
+async function maybeRunDailyMaintenance(nowEpochSec: number, deps: SchedulerDeps): Promise<void> {
+  const { config, logger } = deps;
+  const { hour, minute } = parseDailySummaryTime(config.DAILY_SUMMARY_TIME);
+  const tzNow = nowInTimezone(config.DISPLAY_TIMEZONE);
+
+  if (tzNow.hour !== hour || tzNow.minute !== minute) {
+    return;
+  }
+
+  if (lastMaintenanceRunDate === tzNow.date) {
+    return;
+  }
+
+  lastMaintenanceRunDate = tzNow.date;
+  const now = new Date(nowEpochSec * 1000);
+
+  try {
+    await refreshDailyKeywordMarketStats(now, deps);
+  } catch (error) {
+    logger.error({ error: redactUnknown(error) }, "Daily market stats refresh failed");
+  }
+
+  try {
+    await pruneOldScanRuns(now, deps);
+  } catch (error) {
+    logger.error({ error: redactUnknown(error) }, "Scan run pruning failed");
+  }
+}
+
 let tickRunning = false;
 
 async function tick(deps: SchedulerDeps): Promise<void> {
@@ -117,6 +148,7 @@ async function tick(deps: SchedulerDeps): Promise<void> {
     const nowEpochSec = Math.floor(Date.now() / 1000);
     await runKeywordScans(nowEpochSec, deps);
     await maybeRunDailySummary(nowEpochSec, deps);
+    await maybeRunDailyMaintenance(nowEpochSec, deps);
   } catch (error) {
     deps.logger.error({ error: redactUnknown(error) }, "Scheduler tick failed");
   } finally {

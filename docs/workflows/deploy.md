@@ -23,6 +23,11 @@ Images are built locally and pushed to GHCR (`ghcr.io/audricy/mercari-jp-bot`). 
    ssh ubuntu@161.118.204.72 'docker compose -f ~/mercari_jp_bot/docker-compose.yml logs -f analytics --tail 30'
    ```
 
+If a deploy includes the migration that drops `listing_observations`, reclaim disk afterwards during a maintenance window:
+```bash
+ssh ubuntu@161.118.204.72 'cd ~/mercari_jp_bot && docker compose stop app analytics && sqlite3 data/mercari.db "VACUUM;" && docker compose up -d'
+```
+
 ## Analytics Auth
 
 The analytics web app uses its own login credentials and signed session cookie. Set these in `.env` before deploying:

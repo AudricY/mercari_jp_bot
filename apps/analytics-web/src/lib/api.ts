@@ -27,12 +27,11 @@ async function apiFetch<T>(path: string, params?: Record<string, string | undefi
 export interface KeywordSummary {
   keywordId: string;
   keywordName: string;
-  observationCount: number;
-  uniqueListingCount: number;
+  listingCount: number;
   medianPrice: number;
   minPrice: number;
   maxPrice: number;
-  latestObservedAt: string | null;
+  latestScrapedAt: string | null;
 }
 
 export interface PriceStats {
@@ -53,11 +52,9 @@ export interface HistogramBucket {
 
 export interface TimeseriesPoint {
   periodStart: string;
-  observationCount: number;
-  uniqueListingCount: number;
+  listingCount: number;
   minPrice: number;
   medianPrice: number;
-  p75Price: number;
   maxPrice: number;
 }
 
@@ -69,23 +66,22 @@ export interface ListingItem {
   imageUrl: string;
   price: number;
   currency: string;
-  observedAt: string;
+  scrapedAt: string;
 }
 
-export function getKeywords(from?: string, to?: string) {
-  return apiFetch<{ keywords: KeywordSummary[]; from: string; to: string }>(
+export function getKeywords() {
+  return apiFetch<{ keywords: KeywordSummary[] }>(
     "/v1/analytics/keywords",
-    { from, to },
   );
 }
 
-export function getPriceDistribution(id: string, from?: string, to?: string, buckets?: string) {
+export function getPriceDistribution(id: string, buckets?: string) {
   return apiFetch<{
     keywordId: string;
     keywordName: string;
     stats: PriceStats;
     histogram: HistogramBucket[];
-  }>(`/v1/analytics/keywords/${id}/price-distribution`, { from, to, buckets });
+  }>(`/v1/analytics/keywords/${id}/price-distribution`, { buckets });
 }
 
 export function getTimeseries(id: string, from?: string, to?: string, granularity?: string) {
@@ -97,7 +93,7 @@ export function getTimeseries(id: string, from?: string, to?: string, granularit
   }>(`/v1/analytics/keywords/${id}/timeseries`, { from, to, granularity });
 }
 
-export function getListings(id: string, params?: { from?: string; to?: string; sort?: string; limit?: string; offset?: string }) {
+export function getListings(id: string, params?: { sort?: string; limit?: string; offset?: string }) {
   return apiFetch<{
     keywordId: string;
     keywordName: string;

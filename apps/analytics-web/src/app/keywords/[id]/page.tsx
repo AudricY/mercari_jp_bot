@@ -18,10 +18,10 @@ export default async function KeywordDetailPage({ params, searchParams }: Props)
   const granularity = sp.granularity ?? "day";
 
   const [dist, ts, cheapest, recent] = await Promise.all([
-    getPriceDistribution(id, sp.from, sp.to),
+    getPriceDistribution(id),
     getTimeseries(id, sp.from, sp.to, granularity),
-    getListings(id, { from: sp.from, to: sp.to, sort: "cheapest", limit: "10" }),
-    getListings(id, { from: sp.from, to: sp.to, sort: "newest", limit: "10" }),
+    getListings(id, { sort: "cheapest", limit: "10" }),
+    getListings(id, { sort: "newest", limit: "10" }),
   ]);
 
   const { stats } = dist;
@@ -33,7 +33,7 @@ export default async function KeywordDetailPage({ params, searchParams }: Props)
       </Link>
       <h1 style={{ fontSize: 24, margin: "12px 0 8px" }}>{dist.keywordName}</h1>
       <p style={{ color: "#a3a3a3", marginBottom: 24, fontSize: 14 }}>
-        Last 30 days &middot; {stats.count.toLocaleString()} observations
+        Current tracked listings &middot; {stats.count.toLocaleString()} listings
       </p>
 
       {/* Stats cards */}
@@ -61,7 +61,7 @@ export default async function KeywordDetailPage({ params, searchParams }: Props)
 
       {/* Price trend */}
       <section style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: 18, marginBottom: 4 }}>Price Trend</h2>
+        <h2 style={{ fontSize: 18, marginBottom: 4 }}>Daily Price Trend</h2>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           {(["day", "week", "month"] as const).map((g) => (
             <Link
@@ -85,7 +85,7 @@ export default async function KeywordDetailPage({ params, searchParams }: Props)
 
       {/* Volume */}
       <section style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: 18, marginBottom: 12 }}>Listing Volume</h2>
+        <h2 style={{ fontSize: 18, marginBottom: 12 }}>Tracked Listings</h2>
         <VolumeChart data={ts.series} />
       </section>
 
@@ -104,7 +104,7 @@ export default async function KeywordDetailPage({ params, searchParams }: Props)
   );
 }
 
-function ListingsTable({ listings }: { listings: Array<{ title: string; url: string; imageUrl: string; price: number; currency: string; observedAt: string }> }) {
+function ListingsTable({ listings }: { listings: Array<{ title: string; url: string; imageUrl: string; price: number; currency: string; scrapedAt: string }> }) {
   if (listings.length === 0) {
     return <p style={{ color: "#737373" }}>No listings found.</p>;
   }
@@ -117,7 +117,7 @@ function ListingsTable({ listings }: { listings: Array<{ title: string; url: str
             <th style={thStyle}>Image</th>
             <th style={thStyle}>Title</th>
             <th style={{ ...thStyle, textAlign: "right" }}>Price</th>
-            <th style={{ ...thStyle, textAlign: "right" }}>Observed</th>
+            <th style={{ ...thStyle, textAlign: "right" }}>Scraped</th>
           </tr>
         </thead>
         <tbody>
@@ -136,7 +136,7 @@ function ListingsTable({ listings }: { listings: Array<{ title: string; url: str
                 {formatPrice(l.price, l.currency)}
               </td>
               <td style={{ ...tdStyle, textAlign: "right", color: "#a3a3a3" }}>
-                {formatDateTime(l.observedAt)}
+                {formatDateTime(l.scrapedAt)}
               </td>
             </tr>
           ))}

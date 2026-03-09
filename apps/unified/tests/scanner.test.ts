@@ -15,7 +15,7 @@ import { fetchMercariItemDetail, scanMercariTerm } from "@mercari-bot/core";
 import { scanKeyword } from "../src/scanner.js";
 import { createTestContext, uniqueId } from "./test-env.js";
 
-describe("scanKeyword analytics ingestion", () => {
+describe("scanKeyword listing ingestion", () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
 
   beforeAll(async () => {
@@ -30,13 +30,12 @@ describe("scanKeyword analytics ingestion", () => {
     vi.clearAllMocks();
     await ctx.prisma.notification.deleteMany();
     await ctx.prisma.seenListing.deleteMany();
-    await ctx.prisma.listingObservation.deleteMany();
     await ctx.prisma.listing.deleteMany();
     await ctx.prisma.scanRun.deleteMany();
     await ctx.prisma.keyword.deleteMany();
   });
 
-  it("creates an observation and notification for a new listing", async () => {
+  it("creates a listing and notification for a new listing", async () => {
     const keyword = await createKeyword();
     mockScanResults([listing({ id: "m-new", price: 12000 })]);
 
@@ -50,12 +49,11 @@ describe("scanKeyword analytics ingestion", () => {
     expect(result.itemsFound).toBe(1);
     expect(result.itemsNew).toBe(1);
     expect(await ctx.prisma.listing.count()).toBe(1);
-    expect(await ctx.prisma.listingObservation.count()).toBe(1);
     expect(await ctx.prisma.notification.count()).toBe(1);
     expect(await ctx.prisma.seenListing.count()).toBe(1);
   });
 
-  it("writes an observation for a repeated same-price listing without notifying again", async () => {
+  it("updates a repeated same-price listing without notifying again", async () => {
     const keyword = await createKeyword();
     mockScanResults([listing({ id: "m-repeat", price: 15000 })]);
     await scanKeyword(keyword.id, "manual", {
@@ -76,14 +74,13 @@ describe("scanKeyword analytics ingestion", () => {
     expect(result.itemsFound).toBe(1);
     expect(result.itemsNew).toBe(0);
     expect(await ctx.prisma.listing.count()).toBe(1);
-    expect(await ctx.prisma.listingObservation.count()).toBe(2);
     expect(await ctx.prisma.notification.count()).toBe(1);
 
     const seen = await ctx.prisma.seenListing.findFirstOrThrow();
     expect(Number(seen.lastPrice)).toBe(15000);
   });
 
-  it("writes an observation and a new notification when a listing gets cheaper", async () => {
+  it("creates a new notification when a listing gets cheaper", async () => {
     const keyword = await createKeyword();
     mockScanResults([listing({ id: "m-cheaper", price: 20000 })]);
     await scanKeyword(keyword.id, "manual", {
@@ -103,7 +100,6 @@ describe("scanKeyword analytics ingestion", () => {
 
     expect(result.itemsFound).toBe(1);
     expect(result.itemsNew).toBe(1);
-    expect(await ctx.prisma.listingObservation.count()).toBe(2);
     expect(await ctx.prisma.notification.count()).toBe(2);
 
     const savedListing = await ctx.prisma.listing.findFirstOrThrow();
@@ -126,7 +122,6 @@ describe("scanKeyword analytics ingestion", () => {
     expect(result.itemsFound).toBe(1);
     expect(result.itemsNew).toBe(1);
     expect(fetchMercariItemDetail).toHaveBeenCalledTimes(1);
-    expect(await ctx.prisma.listingObservation.count()).toBe(1);
     expect(await ctx.prisma.notification.count()).toBe(1);
 
     const run = await ctx.prisma.scanRun.findFirstOrThrow();

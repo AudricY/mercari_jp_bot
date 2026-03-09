@@ -77,6 +77,8 @@ Production migrations run automatically via Docker Compose (`prisma migrate depl
 - **`node:22-slim` needs OpenSSL** — Dockerfile installs it for Prisma.
 - **`pnpm --filter` sets cwd** to the package dir (`apps/unified/`), not repo root. Use `CONFIG_PATH` env var.
 - **`title_must_contain` is OR-based.** It matches if any listed token appears in the title, so search-term specificity usually matters more than adding many required tokens.
+- **Analytics is snapshot-based now.** `listings` is the canonical current-state store; daily history comes from `daily_keyword_market_stats`, not per-rescrape observation rows.
+- **SQLite won’t shrink after dropping large tables until `VACUUM`.** Stop the app first so the DB file can be compacted safely.
 
 ## Ops Docs
 

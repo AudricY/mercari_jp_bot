@@ -2,6 +2,8 @@ import type { PrismaClient } from "@prisma/client";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Logger } from "pino";
 
+import { computePriceStats, snapshotFreshSince } from "./market-stats.js";
+
 interface AnalyticsDeps {
   prisma: PrismaClient;
 }
@@ -12,31 +14,20 @@ function parseDateParam(value: string | undefined, fallback: Date): Date {
   return Number.isNaN(d.getTime()) ? fallback : d;
 }
 
-function percentile(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0;
-  if (sorted.length === 1) return sorted[0]!;
-  const idx = (p / 100) * (sorted.length - 1);
-  const lo = Math.floor(idx);
-  const hi = Math.ceil(idx);
-  if (lo === hi) return sorted[lo]!;
-  return sorted[lo]! + (sorted[hi]! - sorted[lo]!) * (idx - lo);
-}
-
-function computeStats(prices: number[]) {
-  if (prices.length === 0) {
-    return { count: 0, min: 0, p25: 0, median: 0, p75: 0, max: 0, mean: 0 };
+function periodStartFor(date: Date, granularity: "day" | "week" | "month"): string {
+  if (granularity === "month") {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01`;
   }
-  const sorted = [...prices].sort((a, b) => a - b);
-  const sum = sorted.reduce((a, b) => a + b, 0);
-  return {
-    count: sorted.length,
-    min: sorted[0]!,
-    p25: percentile(sorted, 25),
-    median: percentile(sorted, 50),
-    p75: percentile(sorted, 75),
-    max: sorted[sorted.length - 1]!,
-    mean: Math.round((sum / sorted.length) * 100) / 100,
-  };
+
+  if (granularity === "week") {
+    const day = new Date(date);
+    const dayOfWeek = day.getUTCDay();
+    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    day.setUTCDate(day.getUTCDate() - diff);
+    return day.toISOString().slice(0, 10);
+  }
+
+  return date.toISOString().slice(0, 10);
 }
 
 export function registerAnalyticsRoutes(
@@ -51,59 +42,65 @@ export function registerAnalyticsRoutes(
     return d;
   };
 
-  app.get("/v1/analytics/keywords", async (request: FastifyRequest<{ Querystring: { from?: string; to?: string } }>) => {
-    const from = parseDateParam(request.query.from, defaultFrom());
-    const to = parseDateParam(request.query.to, new Date());
-
+  app.get("/v1/analytics/keywords", async () => {
+    const freshSince = snapshotFreshSince();
     const keywords = await prisma.keyword.findMany({
       where: { enabled: true },
       orderBy: { name: "asc" },
     });
 
-    const result = await Promise.all(
-      keywords.map(async (kw) => {
-        const observations = await prisma.listingObservation.findMany({
-          where: {
-            keywordId: kw.id,
-            observedAt: { gte: from, lte: to },
-          },
-          select: { numericPrice: true, sourceListingId: true, observedAt: true },
-        });
+    const listings = await prisma.listing.findMany({
+      where: {
+        keywordId: { in: keywords.map((keyword) => keyword.id) },
+        scrapedAt: { gte: freshSince },
+      },
+      select: {
+        keywordId: true,
+        numericPrice: true,
+        scrapedAt: true,
+      },
+    });
 
-        const prices = observations.map((o) => Number(o.numericPrice));
-        const stats = computeStats(prices);
-        const uniqueListings = new Set(
-          observations.map((o) => o.sourceListingId).filter(Boolean),
-        );
-        const latestObs = observations.length > 0
-          ? observations.reduce((a, b) => (a.observedAt > b.observedAt ? a : b))
-          : null;
+    const buckets = new Map<string, { prices: number[]; latestScrapedAt: Date | null }>();
+    for (const keyword of keywords) {
+      buckets.set(keyword.id, { prices: [], latestScrapedAt: null });
+    }
+
+    for (const listing of listings) {
+      if (!listing.keywordId) continue;
+      const bucket = buckets.get(listing.keywordId);
+      if (!bucket) continue;
+      bucket.prices.push(Number(listing.numericPrice));
+      if (!bucket.latestScrapedAt || listing.scrapedAt > bucket.latestScrapedAt) {
+        bucket.latestScrapedAt = listing.scrapedAt;
+      }
+    }
+
+    return {
+      keywords: keywords.map((keyword) => {
+        const bucket = buckets.get(keyword.id) ?? { prices: [], latestScrapedAt: null };
+        const stats = computePriceStats(bucket.prices);
 
         return {
-          keywordId: kw.id,
-          keywordName: kw.name,
-          observationCount: observations.length,
-          uniqueListingCount: uniqueListings.size,
+          keywordId: keyword.id,
+          keywordName: keyword.name,
+          listingCount: stats.count,
           medianPrice: stats.median,
           minPrice: stats.min,
           maxPrice: stats.max,
-          latestObservedAt: latestObs?.observedAt ?? null,
+          latestScrapedAt: bucket.latestScrapedAt?.toISOString() ?? null,
         };
       }),
-    );
-
-    return { keywords: result, from: from.toISOString(), to: to.toISOString() };
+    };
   });
 
   app.get(
     "/v1/analytics/keywords/:id/price-distribution",
     async (
-      request: FastifyRequest<{ Params: { id: string }; Querystring: { from?: string; to?: string; buckets?: string } }>,
+      request: FastifyRequest<{ Params: { id: string }; Querystring: { buckets?: string } }>,
       reply: FastifyReply,
     ) => {
       const { id } = request.params;
-      const from = parseDateParam(request.query.from, defaultFrom());
-      const to = parseDateParam(request.query.to, new Date());
       const bucketCount = Math.min(
         Math.max(Number.parseInt(request.query.buckets ?? "20", 10) || 20, 5),
         100,
@@ -112,16 +109,16 @@ export function registerAnalyticsRoutes(
       const keyword = await prisma.keyword.findUnique({ where: { id } });
       if (!keyword) return reply.code(404).send({ error: "Keyword not found" });
 
-      const observations = await prisma.listingObservation.findMany({
+      const listings = await prisma.listing.findMany({
         where: {
           keywordId: id,
-          observedAt: { gte: from, lte: to },
+          scrapedAt: { gte: snapshotFreshSince() },
         },
         select: { numericPrice: true },
       });
 
-      const prices = observations.map((o) => Number(o.numericPrice));
-      const stats = computeStats(prices);
+      const prices = listings.map((listing) => Number(listing.numericPrice));
+      const stats = computePriceStats(prices);
 
       let histogram: { bucketMin: number; bucketMax: number; count: number }[] = [];
       if (prices.length > 0) {
@@ -137,13 +134,13 @@ export function registerAnalyticsRoutes(
           count: 0,
         }));
 
-        for (const p of sorted) {
-          const idx = Math.min(Math.floor((p - min) / bucketWidth), bucketCount - 1);
-          histogram[idx]!.count++;
+        for (const price of sorted) {
+          const idx = Math.min(Math.floor((price - min) / bucketWidth), bucketCount - 1);
+          histogram[idx]!.count += 1;
         }
       }
 
-      return { keywordId: id, keywordName: keyword.name, from: from.toISOString(), to: to.toISOString(), stats, histogram };
+      return { keywordId: id, keywordName: keyword.name, stats, histogram };
     },
   );
 
@@ -161,55 +158,60 @@ export function registerAnalyticsRoutes(
       const keyword = await prisma.keyword.findUnique({ where: { id } });
       if (!keyword) return reply.code(404).send({ error: "Keyword not found" });
 
-      const observations = await prisma.listingObservation.findMany({
+      const rows = await prisma.dailyKeywordMarketStat.findMany({
         where: {
           keywordId: id,
-          observedAt: { gte: from, lte: to },
+          dateUtc: { gte: from, lte: to },
         },
-        select: { numericPrice: true, sourceListingId: true, observedAt: true },
-        orderBy: { observedAt: "asc" },
+        orderBy: { dateUtc: "asc" },
       });
 
-      const buckets = new Map<string, { prices: number[]; uniqueIds: Set<string> }>();
-
-      for (const obs of observations) {
-        const d = obs.observedAt;
-        let key: string;
-        if (granularity === "month") {
-          key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
-        } else if (granularity === "week") {
-          const day = new Date(d);
-          const dayOfWeek = day.getUTCDay();
-          const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-          day.setUTCDate(day.getUTCDate() - diff);
-          key = day.toISOString().slice(0, 10);
-        } else {
-          key = d.toISOString().slice(0, 10);
-        }
-
+      const buckets = new Map<string, {
+        listingCount: number;
+        weightedMedianTotal: number;
+        minPrice: number;
+        maxPrice: number;
+      }>();
+      for (const row of rows) {
+        const key = periodStartFor(row.dateUtc, granularity);
         let bucket = buckets.get(key);
         if (!bucket) {
-          bucket = { prices: [], uniqueIds: new Set() };
+          bucket = {
+            listingCount: 0,
+            weightedMedianTotal: 0,
+            minPrice: Number(row.minPrice),
+            maxPrice: Number(row.maxPrice),
+          };
           buckets.set(key, bucket);
         }
-        bucket.prices.push(Number(obs.numericPrice));
-        if (obs.sourceListingId) bucket.uniqueIds.add(obs.sourceListingId);
+        bucket.listingCount += row.listingCount;
+        bucket.weightedMedianTotal += Number(row.medianPrice) * row.listingCount;
+        bucket.minPrice = Math.min(bucket.minPrice, Number(row.minPrice));
+        bucket.maxPrice = Math.max(bucket.maxPrice, Number(row.maxPrice));
       }
 
-      const series = [...buckets.entries()].map(([periodStart, bucket]) => {
-        const stats = computeStats(bucket.prices);
-        return {
-          periodStart,
-          observationCount: bucket.prices.length,
-          uniqueListingCount: bucket.uniqueIds.size,
-          minPrice: stats.min,
-          medianPrice: stats.median,
-          p75Price: stats.p75,
-          maxPrice: stats.max,
-        };
-      });
+      const series = [...buckets.entries()]
+        .map(([periodStart, bucket]) => {
+          return {
+            periodStart,
+            listingCount: bucket.listingCount,
+            minPrice: bucket.minPrice,
+            medianPrice: bucket.listingCount > 0
+              ? Math.round((bucket.weightedMedianTotal / bucket.listingCount) * 100) / 100
+              : 0,
+            maxPrice: bucket.maxPrice,
+          };
+        })
+        .sort((a, b) => a.periodStart.localeCompare(b.periodStart));
 
-      return { keywordId: id, keywordName: keyword.name, granularity, from: from.toISOString(), to: to.toISOString(), series };
+      return {
+        keywordId: id,
+        keywordName: keyword.name,
+        granularity,
+        from: from.toISOString(),
+        to: to.toISOString(),
+        series,
+      };
     },
   );
 
@@ -218,13 +220,11 @@ export function registerAnalyticsRoutes(
     async (
       request: FastifyRequest<{
         Params: { id: string };
-        Querystring: { from?: string; to?: string; sort?: string; limit?: string; offset?: string };
+        Querystring: { sort?: string; limit?: string; offset?: string };
       }>,
       reply: FastifyReply,
     ) => {
       const { id } = request.params;
-      const from = parseDateParam(request.query.from, defaultFrom());
-      const to = parseDateParam(request.query.to, new Date());
       const sort = request.query.sort === "cheapest" ? "cheapest" : "newest";
       const limit = Math.min(Math.max(Number.parseInt(request.query.limit ?? "50", 10) || 50, 1), 200);
       const offset = Math.max(Number.parseInt(request.query.offset ?? "0", 10) || 0, 0);
@@ -234,24 +234,21 @@ export function registerAnalyticsRoutes(
 
       const orderBy = sort === "cheapest"
         ? { numericPrice: "asc" as const }
-        : { observedAt: "desc" as const };
+        : { scrapedAt: "desc" as const };
 
-      const [observations, total] = await Promise.all([
-        prisma.listingObservation.findMany({
-          where: {
-            keywordId: id,
-            observedAt: { gte: from, lte: to },
-          },
+      const where = {
+        keywordId: id,
+        scrapedAt: { gte: snapshotFreshSince() },
+      };
+
+      const [listings, total] = await Promise.all([
+        prisma.listing.findMany({
+          where,
           orderBy,
           take: limit,
           skip: offset,
         }),
-        prisma.listingObservation.count({
-          where: {
-            keywordId: id,
-            observedAt: { gte: from, lte: to },
-          },
-        }),
+        prisma.listing.count({ where }),
       ]);
 
       return {
@@ -259,15 +256,15 @@ export function registerAnalyticsRoutes(
         keywordName: keyword.name,
         sort,
         total,
-        listings: observations.map((o) => ({
-          id: o.id,
-          sourceListingId: o.sourceListingId,
-          title: o.title,
-          url: o.listingUrl,
-          imageUrl: o.imageUrl,
-          price: Number(o.numericPrice),
-          currency: o.currency,
-          observedAt: o.observedAt,
+        listings: listings.map((listing) => ({
+          id: listing.id,
+          sourceListingId: listing.sourceListingId,
+          title: listing.title,
+          url: listing.url,
+          imageUrl: listing.imageUrl,
+          price: Number(listing.numericPrice),
+          currency: listing.currency,
+          scrapedAt: listing.scrapedAt,
         })),
       };
     },
