@@ -37,7 +37,8 @@ services:
     environment:
       DATABASE_URL: "file:/app/data/mercari.db"
       ANALYTICS_API_URL: "http://app:3000"
-    command: ["pnpm", "--filter", "@mercari-bot/analytics-web", "run", "start"]
+      PORT: "3001"
+    command: ["node", "apps/analytics-web/.next/standalone/apps/analytics-web/server.js"]
     restart: unless-stopped
     depends_on:
       app:

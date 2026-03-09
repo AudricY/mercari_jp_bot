@@ -26,4 +26,7 @@ COPY scripts ./scripts
 RUN pnpm run db:generate
 RUN pnpm run build
 
+# Copy Next.js static assets into standalone output (required for standalone mode)
+RUN cp -r apps/analytics-web/.next/static apps/analytics-web/.next/standalone/apps/analytics-web/.next/static
+
 CMD ["pnpm", "--filter", "@mercari-bot/unified", "run", "start"]
