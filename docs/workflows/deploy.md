@@ -6,6 +6,10 @@ Images are built locally and pushed to GHCR (`ghcr.io/audricy/mercari-jp-bot`). 
 
 ## Deploy
 
+0. Backup the production SQLite file before migrations:
+   ```bash
+   ssh ubuntu@161.118.204.72 'cd ~/mercari_jp_bot && cp data/mercari.db data/mercari.db.$(date +%Y%m%d%H%M%S).bak'
+   ```
 1. Build and push locally:
    ```bash
    docker build -t ghcr.io/audricy/mercari-jp-bot:latest .
@@ -16,11 +20,16 @@ Images are built locally and pushed to GHCR (`ghcr.io/audricy/mercari-jp-bot`). 
    git push origin main
    ssh ubuntu@161.118.204.72 'cd ~/mercari_jp_bot && git pull && docker compose pull && docker compose down && docker compose up -d'
    ```
-3. Verify:
+3. Run the item catalog backfill after the new app is up:
+   ```bash
+   ssh ubuntu@161.118.204.72 'cd ~/mercari_jp_bot && docker compose exec -T app pnpm --filter @mercari-bot/unified run backfill:items'
+   ```
+4. Verify:
    ```bash
    ssh ubuntu@161.118.204.72 'curl -sf http://localhost:3000/v1/health/live'
    ssh ubuntu@161.118.204.72 'docker compose -f ~/mercari_jp_bot/docker-compose.yml logs -f app --tail 30'
    ssh ubuntu@161.118.204.72 'docker compose -f ~/mercari_jp_bot/docker-compose.yml logs -f analytics --tail 30'
+   ssh ubuntu@161.118.204.72 'curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" -H "X-Forwarded-For: 127.0.0.1" http://localhost:3000/v1/analytics/items'
    ```
 
 If a deploy includes the migration that drops `listing_observations`, reclaim disk afterwards during a maintenance window:

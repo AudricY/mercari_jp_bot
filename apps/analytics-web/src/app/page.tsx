@@ -1,4 +1,4 @@
-import { getKeywords } from "@/lib/api";
+import { getItems } from "@/lib/api";
 import { requireAnalyticsSession } from "@/lib/auth";
 import { formatPrice, formatDateTime } from "@/lib/format";
 import Link from "next/link";
@@ -7,47 +7,53 @@ export const dynamic = "force-dynamic";
 
 export default async function OverviewPage() {
   await requireAnalyticsSession();
-  const data = await getKeywords();
+  const data = await getItems();
 
   return (
     <div>
-      <h1 style={{ fontSize: 24, marginBottom: 8 }}>Keywords Overview</h1>
+      <h1 style={{ fontSize: 24, marginBottom: 8 }}>Items Overview</h1>
       <p style={{ color: "#a3a3a3", marginBottom: 24, fontSize: 14 }}>
-        Current tracked listings &middot; {data.keywords.length} keywords
+        Current tracked listings &middot; {data.items.length} items
       </p>
 
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #262626", textAlign: "left" }}>
-              <th style={thStyle}>Keyword</th>
+              <th style={thStyle}>Item</th>
+              <th style={thStyle}>Platform</th>
               <th style={thStyleRight}>Listings</th>
               <th style={thStyleRight}>Median Price</th>
               <th style={thStyleRight}>Min</th>
               <th style={thStyleRight}>Max</th>
+              <th style={thStyleRight}>Target</th>
+              <th style={thStyleRight}>At/Below Target</th>
               <th style={thStyleRight}>Last Seen</th>
             </tr>
           </thead>
           <tbody>
-            {data.keywords.map((kw) => (
-              <tr key={kw.keywordId} style={{ borderBottom: "1px solid #1a1a1a" }}>
+            {data.items.map((item) => (
+              <tr key={item.itemId} style={{ borderBottom: "1px solid #1a1a1a" }}>
                 <td style={tdStyle}>
-                  <Link href={`/keywords/${kw.keywordId}`} style={{ color: "#60a5fa", textDecoration: "none" }}>
-                    {kw.keywordName}
+                  <Link href={`/items/${item.itemSlug}`} style={{ color: "#60a5fa", textDecoration: "none" }}>
+                    {item.itemName}
                   </Link>
                 </td>
-                <td style={tdStyleRight}>{kw.listingCount.toLocaleString()}</td>
-                <td style={tdStyleRight}>{kw.listingCount > 0 ? formatPrice(kw.medianPrice) : "—"}</td>
-                <td style={tdStyleRight}>{kw.listingCount > 0 ? formatPrice(kw.minPrice) : "—"}</td>
-                <td style={tdStyleRight}>{kw.listingCount > 0 ? formatPrice(kw.maxPrice) : "—"}</td>
-                <td style={tdStyleRight}>{kw.latestScrapedAt ? formatDateTime(kw.latestScrapedAt) : "—"}</td>
+                <td style={tdStyle}>{item.platform}</td>
+                <td style={tdStyleRight}>{item.listingCount.toLocaleString()}</td>
+                <td style={tdStyleRight}>{item.listingCount > 0 ? formatPrice(item.medianPrice) : "—"}</td>
+                <td style={tdStyleRight}>{item.listingCount > 0 ? formatPrice(item.minPrice) : "—"}</td>
+                <td style={tdStyleRight}>{item.listingCount > 0 ? formatPrice(item.maxPrice) : "—"}</td>
+                <td style={tdStyleRight}>{item.targetBuyPrice != null ? formatPrice(item.targetBuyPrice) : "—"}</td>
+                <td style={tdStyleRight}>{item.belowTargetCount.toLocaleString()}</td>
+                <td style={tdStyleRight}>{item.latestScrapedAt ? formatDateTime(item.latestScrapedAt) : "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {data.keywords.length === 0 && (
+      {data.items.length === 0 && (
         <p style={{ color: "#737373", textAlign: "center", marginTop: 48 }}>
           No current listing data yet. Data will appear after the bot starts scanning.
         </p>

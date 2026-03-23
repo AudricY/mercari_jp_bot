@@ -9,6 +9,11 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const sessionState = await getAnalyticsSessionState();
+  const navLinkStyle: React.CSSProperties = {
+    color: "#a3a3a3",
+    textDecoration: "none",
+    fontSize: 14,
+  };
 
   return (
     <html lang="en">
@@ -18,6 +23,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <a href="/" style={{ color: "#e5e5e5", textDecoration: "none", fontWeight: 600, fontSize: 18 }}>
               Mercari Analytics
             </a>
+            {sessionState.isAuthenticated && (
+              <>
+                <a href="/" style={navLinkStyle}>Items</a>
+                <a href="/keywords" style={navLinkStyle}>Keywords</a>
+              </>
+            )}
             {sessionState.isAuthenticated && sessionState.username && (
               <span style={{ color: "#a3a3a3", fontSize: 14 }}>Signed in as {sessionState.username}</span>
             )}

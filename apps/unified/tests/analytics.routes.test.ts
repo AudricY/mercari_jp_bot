@@ -9,6 +9,9 @@ describe("analytics routes", () => {
   let activeKeywordId: string;
   let emptyKeywordId: string;
   let disabledKeywordId: string;
+  let activeItemId: string;
+  let activeItemSlug: string;
+  let emptyItemSlug: string;
   let mostRecentScrapedAt: string;
 
   beforeAll(async () => {
@@ -51,6 +54,35 @@ describe("analytics routes", () => {
       disabledKeywordId = keyword.id;
     });
 
+    const activeItem = await ctx.prisma.item.create({
+      data: {
+        slug: "ps-vita-2000",
+        displayName: "PS Vita 2000",
+        kind: "hardware",
+        platform: "PS Vita",
+        series: "Handhelds",
+        targetBuyPrice: 220,
+        enabled: true,
+        matchers: { aliases: ["psvita2000", "pch2000"] },
+      },
+    });
+    activeItemId = activeItem.id;
+    activeItemSlug = activeItem.slug;
+
+    await ctx.prisma.item.create({
+      data: {
+        slug: "nintendo-3ds-ll",
+        displayName: "Nintendo 3DS LL",
+        kind: "hardware",
+        platform: "Nintendo 3DS",
+        series: "Handhelds",
+        enabled: true,
+        matchers: { aliases: ["3dsll"] },
+      },
+    }).then((item) => {
+      emptyItemSlug = item.slug;
+    });
+
     const now = Date.now();
     const recentDates = [
       new Date(now - DAY_MS),
@@ -64,6 +96,9 @@ describe("analytics routes", () => {
         {
           id: uniqueId("listing"),
           keywordId: activeKeywordId,
+          itemId: activeItemId,
+          itemMatchStatus: "matched",
+          itemSubfamily: "PCH-2000",
           sourceListingId: "m-1",
           title: "PS Vita Aqua Blue",
           url: "https://jp.mercari.com/item/m-1",
@@ -77,6 +112,9 @@ describe("analytics routes", () => {
         {
           id: uniqueId("listing"),
           keywordId: activeKeywordId,
+          itemId: activeItemId,
+          itemMatchStatus: "matched",
+          itemSubfamily: "PCH-2000",
           sourceListingId: "m-2",
           title: "PS Vita Black",
           url: "https://jp.mercari.com/item/m-2",
@@ -90,6 +128,9 @@ describe("analytics routes", () => {
         {
           id: uniqueId("listing"),
           keywordId: activeKeywordId,
+          itemId: activeItemId,
+          itemMatchStatus: "matched",
+          itemSubfamily: "PCH-2000",
           sourceListingId: "m-3",
           title: "PS Vita White",
           url: "https://jp.mercari.com/item/m-3",
@@ -157,6 +198,29 @@ describe("analytics routes", () => {
           medianPrice: 400,
           maxPrice: 400,
           latestScrapedAt: isoDate("2026-03-10T08:00:00.000Z"),
+        },
+      ],
+    });
+
+    await ctx.prisma.dailyItemMarketStat.createMany({
+      data: [
+        {
+          dateUtc: isoDate("2026-03-01T00:00:00.000Z"),
+          itemId: activeItemId,
+          listingCount: 1,
+          minPrice: 100,
+          medianPrice: 100,
+          maxPrice: 100,
+          latestScrapedAt: isoDate("2026-03-01T08:00:00.000Z"),
+        },
+        {
+          dateUtc: isoDate("2026-03-03T00:00:00.000Z"),
+          itemId: activeItemId,
+          listingCount: 2,
+          minPrice: 200,
+          medianPrice: 250,
+          maxPrice: 300,
+          latestScrapedAt: isoDate("2026-03-03T08:00:00.000Z"),
         },
       ],
     });
@@ -236,6 +300,57 @@ describe("analytics routes", () => {
     });
   });
 
+  it("returns current snapshot aggregates for enabled items", async () => {
+    const response = await ctx.app.inject({
+      method: "GET",
+      url: "/v1/analytics/items",
+      headers: ctx.authHeaders(),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as {
+      items: Array<{
+        itemId: string;
+        itemSlug: string;
+        itemName: string;
+        listingCount: number;
+        medianPrice: number;
+        minPrice: number;
+        maxPrice: number;
+        latestScrapedAt: string | null;
+        targetBuyPrice: number | null;
+        belowTargetCount: number;
+        cheapestVsTarget: number | null;
+      }>;
+    };
+
+    const active = body.items.find((item) => item.itemId === activeItemId);
+    expect(active).toEqual({
+      itemId: activeItemId,
+      itemSlug: activeItemSlug,
+      itemName: "PS Vita 2000",
+      kind: "hardware",
+      platform: "PS Vita",
+      listingCount: 3,
+      medianPrice: 200,
+      minPrice: 100,
+      maxPrice: 300,
+      latestScrapedAt: mostRecentScrapedAt,
+      targetBuyPrice: 220,
+      belowTargetCount: 2,
+      cheapestVsTarget: -120,
+    });
+
+    const empty = body.items.find((item) => item.itemSlug === emptyItemSlug);
+    expect(empty).toMatchObject({
+      itemSlug: emptyItemSlug,
+      listingCount: 0,
+      minPrice: 0,
+      maxPrice: 0,
+      belowTargetCount: 0,
+    });
+  });
+
   it("returns histogram and stats for current price distribution", async () => {
     const response = await ctx.app.inject({
       method: "GET",
@@ -267,6 +382,34 @@ describe("analytics routes", () => {
       mean: 200,
     });
     expect(body.histogram).toHaveLength(5);
+    expect(body.histogram.reduce((sum, bucket) => sum + bucket.count, 0)).toBe(3);
+  });
+
+  it("returns histogram and target stats for item price distribution", async () => {
+    const response = await ctx.app.inject({
+      method: "GET",
+      url: `/v1/analytics/items/${activeItemSlug}/price-distribution?buckets=5`,
+      headers: ctx.authHeaders(),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as {
+      targetBuyPrice: number | null;
+      belowTargetCount: number;
+      cheapestVsTarget: number | null;
+      stats: { count: number; min: number; median: number; max: number };
+      histogram: Array<{ count: number }>;
+    };
+
+    expect(body.targetBuyPrice).toBe(220);
+    expect(body.belowTargetCount).toBe(2);
+    expect(body.cheapestVsTarget).toBe(-120);
+    expect(body.stats).toMatchObject({
+      count: 3,
+      min: 100,
+      median: 200,
+      max: 300,
+    });
     expect(body.histogram.reduce((sum, bucket) => sum + bucket.count, 0)).toBe(3);
   });
 
@@ -422,6 +565,40 @@ describe("analytics routes", () => {
         maxPrice: 400,
       },
     ]);
+  });
+
+  it("returns item time series and item listings", async () => {
+    const timeseries = await ctx.app.inject({
+      method: "GET",
+      url: `/v1/analytics/items/${activeItemSlug}/timeseries?from=2026-03-01T00:00:00.000Z&to=2026-03-31T23:59:59.999Z&granularity=day`,
+      headers: ctx.authHeaders(),
+    });
+    expect(timeseries.statusCode).toBe(200);
+    const timeseriesBody = timeseries.json() as {
+      itemSlug: string;
+      targetBuyPrice: number | null;
+      series: Array<{ periodStart: string; listingCount: number; medianPrice: number }>;
+    };
+    expect(timeseriesBody.itemSlug).toBe(activeItemSlug);
+    expect(timeseriesBody.targetBuyPrice).toBe(220);
+    expect(timeseriesBody.series).toEqual([
+      { periodStart: "2026-03-01", listingCount: 1, minPrice: 100, medianPrice: 100, maxPrice: 100 },
+      { periodStart: "2026-03-03", listingCount: 2, minPrice: 200, medianPrice: 250, maxPrice: 300 },
+    ]);
+
+    const listings = await ctx.app.inject({
+      method: "GET",
+      url: `/v1/analytics/items/${activeItemSlug}/listings?sort=cheapest&limit=3`,
+      headers: ctx.authHeaders(),
+    });
+    expect(listings.statusCode).toBe(200);
+    const listingsBody = listings.json() as {
+      total: number;
+      listings: Array<{ price: number; itemSubfamily: string | null }>;
+    };
+    expect(listingsBody.total).toBe(3);
+    expect(listingsBody.listings.map((listing) => listing.price)).toEqual([100, 200, 300]);
+    expect(listingsBody.listings[0]!.itemSubfamily).toBe("PCH-2000");
   });
 
   it("returns current listings sorted by newest and cheapest with pagination", async () => {

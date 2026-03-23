@@ -34,6 +34,22 @@ export interface KeywordSummary {
   latestScrapedAt: string | null;
 }
 
+export interface ItemSummary {
+  itemId: string;
+  itemSlug: string;
+  itemName: string;
+  kind: string;
+  platform: string;
+  listingCount: number;
+  medianPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  latestScrapedAt: string | null;
+  targetBuyPrice: number | null;
+  belowTargetCount: number;
+  cheapestVsTarget: number | null;
+}
+
 export interface PriceStats {
   count: number;
   min: number;
@@ -67,12 +83,32 @@ export interface ListingItem {
   price: number;
   currency: string;
   scrapedAt: string;
+  itemSubfamily?: string | null;
+}
+
+export function getItems() {
+  return apiFetch<{ items: ItemSummary[] }>(
+    "/v1/analytics/items",
+  );
 }
 
 export function getKeywords() {
   return apiFetch<{ keywords: KeywordSummary[] }>(
     "/v1/analytics/keywords",
   );
+}
+
+export function getItemPriceDistribution(id: string, buckets?: string) {
+  return apiFetch<{
+    itemId: string;
+    itemSlug: string;
+    itemName: string;
+    targetBuyPrice: number | null;
+    belowTargetCount: number;
+    cheapestVsTarget: number | null;
+    stats: PriceStats;
+    histogram: HistogramBucket[];
+  }>(`/v1/analytics/items/${id}/price-distribution`, { buckets });
 }
 
 export function getPriceDistribution(id: string, buckets?: string) {
@@ -84,6 +120,17 @@ export function getPriceDistribution(id: string, buckets?: string) {
   }>(`/v1/analytics/keywords/${id}/price-distribution`, { buckets });
 }
 
+export function getItemTimeseries(id: string, from?: string, to?: string, granularity?: string) {
+  return apiFetch<{
+    itemId: string;
+    itemSlug: string;
+    itemName: string;
+    granularity: string;
+    targetBuyPrice: number | null;
+    series: TimeseriesPoint[];
+  }>(`/v1/analytics/items/${id}/timeseries`, { from, to, granularity });
+}
+
 export function getTimeseries(id: string, from?: string, to?: string, granularity?: string) {
   return apiFetch<{
     keywordId: string;
@@ -91,6 +138,18 @@ export function getTimeseries(id: string, from?: string, to?: string, granularit
     granularity: string;
     series: TimeseriesPoint[];
   }>(`/v1/analytics/keywords/${id}/timeseries`, { from, to, granularity });
+}
+
+export function getItemListings(id: string, params?: { sort?: string; limit?: string; offset?: string }) {
+  return apiFetch<{
+    itemId: string;
+    itemSlug: string;
+    itemName: string;
+    targetBuyPrice: number | null;
+    sort: string;
+    total: number;
+    listings: ListingItem[];
+  }>(`/v1/analytics/items/${id}/listings`, params);
 }
 
 export function getListings(id: string, params?: { sort?: string; limit?: string; offset?: string }) {

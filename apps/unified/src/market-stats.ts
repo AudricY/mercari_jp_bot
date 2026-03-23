@@ -127,6 +127,75 @@ export async function refreshDailyKeywordMarketStats(
   );
 }
 
+export async function refreshDailyItemMarketStats(
+  now: Date,
+  deps: MarketStatsDeps,
+): Promise<void> {
+  const { logger, prisma } = deps;
+  const dateUtc = utcDayStart(now);
+  const freshSince = snapshotFreshSince(now);
+  const enabledItems = await prisma.item.findMany({
+    where: { enabled: true },
+    select: { id: true },
+  });
+  const enabledItemIds = enabledItems.map((item) => item.id);
+
+  const listings = await prisma.listing.findMany({
+    where: {
+      itemId: { in: enabledItemIds },
+      scrapedAt: { gte: freshSince },
+    },
+    select: {
+      itemId: true,
+      numericPrice: true,
+      scrapedAt: true,
+    },
+  });
+
+  const buckets = new Map<string, { prices: number[]; latestScrapedAt: Date }>();
+  for (const listing of listings) {
+    if (!listing.itemId) continue;
+    const price = Number(listing.numericPrice);
+    const existing = buckets.get(listing.itemId);
+    if (existing) {
+      existing.prices.push(price);
+      if (listing.scrapedAt > existing.latestScrapedAt) {
+        existing.latestScrapedAt = listing.scrapedAt;
+      }
+    } else {
+      buckets.set(listing.itemId, {
+        prices: [price],
+        latestScrapedAt: listing.scrapedAt,
+      });
+    }
+  }
+
+  const rows = [...buckets.entries()].map(([itemId, bucket]) => {
+    const stats = computePriceStats(bucket.prices);
+    return {
+      dateUtc,
+      itemId,
+      listingCount: stats.count,
+      minPrice: stats.min,
+      medianPrice: stats.median,
+      maxPrice: stats.max,
+      latestScrapedAt: bucket.latestScrapedAt,
+    };
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.dailyItemMarketStat.deleteMany({ where: { dateUtc } });
+    if (rows.length > 0) {
+      await tx.dailyItemMarketStat.createMany({ data: rows });
+    }
+  });
+
+  logger.info(
+    { dateUtc: dateUtc.toISOString(), itemCount: rows.length, freshSince: freshSince.toISOString() },
+    "Daily item market stats refreshed",
+  );
+}
+
 export async function pruneOldScanRuns(now: Date, deps: MarketStatsDeps): Promise<void> {
   const { logger, prisma } = deps;
   const cutoff = new Date(now.getTime() - SCAN_RUN_RETENTION_DAYS * DAY_MS);

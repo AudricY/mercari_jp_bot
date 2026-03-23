@@ -22,6 +22,8 @@ COPY apps ./apps
 COPY packages ./packages
 COPY prisma ./prisma
 COPY scripts ./scripts
+COPY catalog ./catalog
+COPY to_buy_softawre.csv ./to_buy_softawre.csv
 
 RUN pnpm run db:generate
 RUN pnpm run build

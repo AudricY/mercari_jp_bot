@@ -1,4 +1,4 @@
-import { getPriceDistribution, getTimeseries, getListings } from "@/lib/api";
+import { getItemListings, getItemPriceDistribution, getItemTimeseries } from "@/lib/api";
 import { requireAnalyticsSession } from "@/lib/auth";
 import { formatPrice, formatDateTime } from "@/lib/format";
 import { Histogram, PriceTrendChart, VolumeChart } from "@/components/PriceChart";
@@ -11,40 +11,42 @@ interface Props {
   searchParams: Promise<{ from?: string; to?: string; granularity?: string; sort?: string }>;
 }
 
-export default async function KeywordDetailPage({ params, searchParams }: Props) {
+export default async function ItemDetailPage({ params, searchParams }: Props) {
   await requireAnalyticsSession();
   const { id } = await params;
   const sp = await searchParams;
   const granularity = sp.granularity ?? "day";
 
   const [dist, ts, cheapest, recent] = await Promise.all([
-    getPriceDistribution(id),
-    getTimeseries(id, sp.from, sp.to, granularity),
-    getListings(id, { sort: "cheapest", limit: "10" }),
-    getListings(id, { sort: "newest", limit: "10" }),
+    getItemPriceDistribution(id),
+    getItemTimeseries(id, sp.from, sp.to, granularity),
+    getItemListings(id, { sort: "cheapest", limit: "10" }),
+    getItemListings(id, { sort: "newest", limit: "10" }),
   ]);
 
   const { stats } = dist;
 
   return (
     <div>
-      <Link href="/keywords" style={{ color: "#60a5fa", textDecoration: "none", fontSize: 14 }}>
-        &larr; All Keywords
+      <Link href="/" style={{ color: "#60a5fa", textDecoration: "none", fontSize: 14 }}>
+        &larr; All Items
       </Link>
-      <h1 style={{ fontSize: 24, margin: "12px 0 8px" }}>{dist.keywordName}</h1>
+      <h1 style={{ fontSize: 24, margin: "12px 0 8px" }}>{dist.itemName}</h1>
       <p style={{ color: "#a3a3a3", marginBottom: 24, fontSize: 14 }}>
         Current tracked listings &middot; {stats.count.toLocaleString()} listings
       </p>
 
-      {/* Stats cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 32 }}>
         {[
+          { label: "Target", value: dist.targetBuyPrice != null ? formatPrice(dist.targetBuyPrice) : "—" },
+          { label: "Below Target", value: dist.belowTargetCount.toLocaleString() },
+          {
+            label: "Cheapest vs Target",
+            value: dist.cheapestVsTarget == null ? "—" : formatPrice(dist.cheapestVsTarget),
+          },
           { label: "Min", value: formatPrice(stats.min) },
-          { label: "P25", value: formatPrice(stats.p25) },
           { label: "Median", value: formatPrice(stats.median) },
-          { label: "P75", value: formatPrice(stats.p75) },
           { label: "Max", value: formatPrice(stats.max) },
-          { label: "Mean", value: formatPrice(stats.mean) },
         ].map((s) => (
           <div key={s.label} style={{ background: "#141414", border: "1px solid #262626", borderRadius: 8, padding: "12px 16px" }}>
             <div style={{ color: "#737373", fontSize: 12, marginBottom: 4 }}>{s.label}</div>
@@ -53,20 +55,18 @@ export default async function KeywordDetailPage({ params, searchParams }: Props)
         ))}
       </div>
 
-      {/* Histogram */}
       <section style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 18, marginBottom: 12 }}>Price Distribution</h2>
         <Histogram data={dist.histogram} />
       </section>
 
-      {/* Price trend */}
       <section style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 18, marginBottom: 4 }}>Daily Price Trend</h2>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           {(["day", "week", "month"] as const).map((g) => (
             <Link
               key={g}
-              href={`/keywords/${id}?granularity=${g}`}
+              href={`/items/${id}?granularity=${g}`}
               style={{
                 padding: "4px 12px",
                 borderRadius: 4,
@@ -83,19 +83,16 @@ export default async function KeywordDetailPage({ params, searchParams }: Props)
         <PriceTrendChart data={ts.series} />
       </section>
 
-      {/* Volume */}
       <section style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 18, marginBottom: 12 }}>Tracked Listings</h2>
         <VolumeChart data={ts.series} />
       </section>
 
-      {/* Cheapest listings */}
       <section style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 18, marginBottom: 12 }}>Cheapest Recent Listings</h2>
         <ListingsTable listings={cheapest.listings} />
       </section>
 
-      {/* Recent listings */}
       <section style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 18, marginBottom: 12 }}>Most Recent Listings</h2>
         <ListingsTable listings={recent.listings} />
@@ -104,7 +101,7 @@ export default async function KeywordDetailPage({ params, searchParams }: Props)
   );
 }
 
-function ListingsTable({ listings }: { listings: Array<{ title: string; url: string; imageUrl: string; price: number; currency: string; scrapedAt: string }> }) {
+function ListingsTable({ listings }: { listings: Array<{ title: string; url: string; imageUrl: string; price: number; currency: string; scrapedAt: string; itemSubfamily?: string | null }> }) {
   if (listings.length === 0) {
     return <p style={{ color: "#737373" }}>No listings found.</p>;
   }
@@ -116,6 +113,7 @@ function ListingsTable({ listings }: { listings: Array<{ title: string; url: str
           <tr style={{ borderBottom: "1px solid #262626", textAlign: "left" }}>
             <th style={thStyle}>Image</th>
             <th style={thStyle}>Title</th>
+            <th style={thStyle}>Model</th>
             <th style={{ ...thStyle, textAlign: "right" }}>Price</th>
             <th style={{ ...thStyle, textAlign: "right" }}>Scraped</th>
           </tr>
@@ -132,6 +130,7 @@ function ListingsTable({ listings }: { listings: Array<{ title: string; url: str
                   {l.title.length > 60 ? `${l.title.slice(0, 60)}...` : l.title}
                 </a>
               </td>
+              <td style={{ ...tdStyle, color: "#a3a3a3" }}>{l.itemSubfamily ?? "—"}</td>
               <td style={{ ...tdStyle, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                 {formatPrice(l.price, l.currency)}
               </td>

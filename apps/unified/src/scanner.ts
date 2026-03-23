@@ -13,6 +13,8 @@ import {
   type Metrics,
 } from "@mercari-bot/core";
 
+import { classifyListing, loadCompiledItems } from "./items.js";
+
 export interface ScannerDeps {
   config: AppConfig;
   logger: Logger;
@@ -81,6 +83,7 @@ export async function scanKeyword(
     const terms = Array.isArray(keyword.terms)
       ? keyword.terms.filter((term): term is string => typeof term === "string")
       : [];
+    const items = await loadCompiledItems(prisma);
 
     for (const term of terms) {
       let scraped = [];
@@ -118,6 +121,14 @@ export async function scanKeyword(
         });
 
         const now = new Date();
+        const initialMatch = classifyListing(
+          {
+            title: listing.title,
+            rawJson: listing.rawJson,
+            keywordName: keyword.name,
+          },
+          items,
+        );
 
         const savedListing = await prisma.listing.upsert({
           where: { url: listing.url },
@@ -132,6 +143,9 @@ export async function scanKeyword(
             rawJson: listing.rawJson,
             scrapedAt: now,
             keywordId: keyword.id,
+            itemId: initialMatch.itemId,
+            itemMatchStatus: initialMatch.itemMatchStatus,
+            itemSubfamily: initialMatch.itemSubfamily,
           },
           update: {
             title: listing.title,
@@ -141,8 +155,37 @@ export async function scanKeyword(
             rawPriceDisplay: listing.rawPriceDisplay,
             rawJson: listing.rawJson,
             scrapedAt: now,
+            itemId: initialMatch.itemId,
+            itemMatchStatus: initialMatch.itemMatchStatus,
+            itemSubfamily: initialMatch.itemSubfamily,
           },
         });
+
+        if (savedListing.rawDetailJson) {
+          const refinedMatch = classifyListing(
+            {
+              title: savedListing.title,
+              rawJson: savedListing.rawJson,
+              rawDetailJson: savedListing.rawDetailJson,
+              keywordName: keyword.name,
+            },
+            items,
+          );
+          if (
+            refinedMatch.itemId !== initialMatch.itemId
+            || refinedMatch.itemMatchStatus !== initialMatch.itemMatchStatus
+            || refinedMatch.itemSubfamily !== initialMatch.itemSubfamily
+          ) {
+            await prisma.listing.update({
+              where: { id: savedListing.id },
+              data: {
+                itemId: refinedMatch.itemId,
+                itemMatchStatus: refinedMatch.itemMatchStatus,
+                itemSubfamily: refinedMatch.itemSubfamily,
+              },
+            });
+          }
+        }
 
         const seen = await prisma.seenListing.findUnique({ where: { dedupeKey } });
         const isNewOrCheaper = !seen || Number(seen.lastPrice) > listing.numericPrice;
@@ -180,9 +223,23 @@ export async function scanKeyword(
               itemId: sourceListingId,
               timeoutMs: config.SCRAPE_HTTP_TIMEOUT_MS,
             });
+            const refinedMatch = classifyListing(
+              {
+                title: listing.title,
+                rawJson: listing.rawJson,
+                rawDetailJson,
+                keywordName: keyword.name,
+              },
+              items,
+            );
             await prisma.listing.update({
               where: { id: savedListing.id },
-              data: { rawDetailJson },
+              data: {
+                rawDetailJson,
+                itemId: refinedMatch.itemId,
+                itemMatchStatus: refinedMatch.itemMatchStatus,
+                itemSubfamily: refinedMatch.itemSubfamily,
+              },
             });
           } catch (error) {
             logger.warn(

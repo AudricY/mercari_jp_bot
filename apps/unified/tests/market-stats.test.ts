@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { pruneOldScanRuns, refreshDailyKeywordMarketStats } from "../src/market-stats.js";
+import { pruneOldScanRuns, refreshDailyItemMarketStats, refreshDailyKeywordMarketStats } from "../src/market-stats.js";
 import { createTestContext, isoDate, uniqueId } from "./test-env.js";
 
 describe("market stats maintenance", () => {
@@ -17,9 +17,11 @@ describe("market stats maintenance", () => {
   beforeEach(async () => {
     await ctx.prisma.notification.deleteMany();
     await ctx.prisma.seenListing.deleteMany();
+    await ctx.prisma.dailyItemMarketStat.deleteMany();
     await ctx.prisma.dailyKeywordMarketStat.deleteMany();
     await ctx.prisma.listing.deleteMany();
     await ctx.prisma.scanRun.deleteMany();
+    await ctx.prisma.item.deleteMany();
     await ctx.prisma.keyword.deleteMany();
   });
 
@@ -90,6 +92,77 @@ describe("market stats maintenance", () => {
     expect(rows).toHaveLength(1);
     expect(Number(rows[0]!.medianPrice)).toBe(150);
     expect(Number(rows[0]!.maxPrice)).toBe(200);
+  });
+
+  it("refreshes daily item market stats from matched listings and overwrites same-day rows", async () => {
+    const item = await ctx.prisma.item.create({
+      data: {
+        slug: "switch-oled",
+        displayName: "Nintendo Switch OLED",
+        kind: "hardware",
+        platform: "Nintendo Switch",
+        series: "Handhelds",
+        enabled: true,
+        matchers: { aliases: ["switch oled"] },
+      },
+    });
+
+    await ctx.prisma.listing.createMany({
+      data: [
+        {
+          id: uniqueId("listing"),
+          itemId: item.id,
+          itemMatchStatus: "matched",
+          sourceListingId: "oled-a",
+          title: "Switch OLED A",
+          url: "https://jp.mercari.com/item/oled-a",
+          imageUrl: "https://example.com/oled-a.jpg",
+          currency: "¥",
+          numericPrice: 19000,
+          rawPriceDisplay: "¥19000",
+          rawJson: "{}",
+          scrapedAt: isoDate("2026-03-09T08:00:00.000Z"),
+        },
+        {
+          id: uniqueId("listing"),
+          itemId: item.id,
+          itemMatchStatus: "matched",
+          sourceListingId: "oled-b",
+          title: "Switch OLED B",
+          url: "https://jp.mercari.com/item/oled-b",
+          imageUrl: "https://example.com/oled-b.jpg",
+          currency: "¥",
+          numericPrice: 21000,
+          rawPriceDisplay: "¥21000",
+          rawJson: "{}",
+          scrapedAt: isoDate("2026-03-08T08:00:00.000Z"),
+        },
+      ],
+    });
+
+    const now = isoDate("2026-03-09T12:00:00.000Z");
+    await refreshDailyItemMarketStats(now, { prisma: ctx.prisma, logger: ctx.logger });
+
+    let rows = await ctx.prisma.dailyItemMarketStat.findMany();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      itemId: item.id,
+      listingCount: 2,
+    });
+    expect(Number(rows[0]!.minPrice)).toBe(19000);
+    expect(Number(rows[0]!.medianPrice)).toBe(20000);
+    expect(Number(rows[0]!.maxPrice)).toBe(21000);
+
+    await ctx.prisma.listing.update({
+      where: { url: "https://jp.mercari.com/item/oled-b" },
+      data: { numericPrice: 20000, rawPriceDisplay: "¥20000" },
+    });
+
+    await refreshDailyItemMarketStats(now, { prisma: ctx.prisma, logger: ctx.logger });
+    rows = await ctx.prisma.dailyItemMarketStat.findMany();
+    expect(rows).toHaveLength(1);
+    expect(Number(rows[0]!.medianPrice)).toBe(19500);
+    expect(Number(rows[0]!.maxPrice)).toBe(20000);
   });
 
   it("prunes old scan runs by retention window", async () => {

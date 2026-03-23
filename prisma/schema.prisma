@@ -59,12 +59,36 @@ model Listing {
   rawJson         String?        @map("raw_json")
   rawDetailJson   String?        @map("raw_detail_json")
   keywordId       String?        @map("keyword_id")
+  itemId          String?        @map("item_id")
+  itemMatchStatus String?        @map("item_match_status")
+  itemSubfamily   String?        @map("item_subfamily")
   keyword         Keyword?       @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+  item            Item?          @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   notifications   Notification[]
 
   @@index([keywordId, scrapedAt])
+  @@index([itemId, scrapedAt])
   @@map("listings")
+}
+
+model Item {
+  id             String                @id @default(uuid())
+  slug           String                @unique
+  displayName    String                @map("display_name")
+  kind           String
+  platform       String
+  series         String?
+  targetBuyPrice Decimal?              @map("target_buy_price")
+  enabled        Boolean               @default(true)
+  matchers       Json
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+
+  listings       Listing[]
+  marketStats    DailyItemMarketStat[]
+
+  @@map("items")
 }
 
 model SeenListing {
@@ -142,4 +166,19 @@ model DailyKeywordMarketStat {
 
   @@id([dateUtc, keywordId])
   @@map("daily_keyword_market_stats")
+}
+
+model DailyItemMarketStat {
+  dateUtc         DateTime @map("date_utc")
+  itemId          String   @map("item_id")
+  listingCount    Int      @map("listing_count")
+  minPrice        Decimal  @map("min_price")
+  medianPrice     Decimal  @map("median_price")
+  maxPrice        Decimal  @map("max_price")
+  latestScrapedAt DateTime @map("latest_scraped_at")
+
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([dateUtc, itemId])
+  @@map("daily_item_market_stats")
 }

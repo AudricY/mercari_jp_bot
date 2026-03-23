@@ -31,4 +31,23 @@ describe("analytics api client", () => {
       }),
     );
   });
+
+  it("calls the item overview endpoint", async () => {
+    process.env.ADMIN_TOKEN = "test-admin-token";
+    process.env.ANALYTICS_API_URL = "http://app:3000";
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ items: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getItems } = await import("./api");
+    await getItems();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://app:3000/v1/analytics/items",
+      expect.any(Object),
+    );
+  });
 });

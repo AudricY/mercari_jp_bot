@@ -47,12 +47,8 @@ export async function createTestContext(configOverrides: Partial<AppConfig> = {}
   const dbPath = join(tempDir, "test.db");
   const databaseUrl = `file:${dbPath}`;
 
-  await execFileAsync("pnpm", ["run", "db:migrate"], {
+  await execFileAsync("bash", ["-lc", `for file in $(find prisma/migrations -mindepth 2 -name migration.sql | sort); do sqlite3 "${dbPath}" < "$file" || exit 1; done`], {
     cwd: repoRoot,
-    env: {
-      ...process.env,
-      DATABASE_URL: databaseUrl,
-    },
     maxBuffer: 10 * 1024 * 1024,
   });
 

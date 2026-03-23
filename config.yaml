@@ -149,12 +149,11 @@ keywords:
       - 超おどる メイドインワリオ
       - Nintendo Switch Sports
       - デイヴ・ザ・ダイバー
-      - 三國無双7 Switch
-      - Minecraft Switch
-      - マインクラフト ストーリーモード
-      - スターデューバレー
-      - ドンキーコング Switch
-    price_max: 9000
+      - 三國無双7 with 猛将伝 DX
+      - Minecraft Nintendo Switch版
+      - Minecraft Dungeons Ultimate Edition
+      - マインクラフト:ストーリーモード シーズン2
+    price_max: 6000
     category_id: 702
     interval_sec: 120
 
@@ -162,11 +161,18 @@ keywords:
   ns2:
     topic: NS2
     term:
+      - ドンキーコング バナンザ Nintendo Switch 2 Edition
+      - ドンキーコング バナンザ Nintendo Switch2
+      - HADES II Nintendo Switch 2 Edition
+      - サイバーパンク2077 アルティメットエディション Nintendo Switch 2 Edition
+      - マリオカートワールド Nintendo Switch 2 Edition
+      - ゼルダの伝説 ブレスオブザワイルド Nintendo Switch 2 Edition
+      - ゼルダの伝説 ティアーズ オブ ザ キングダム Nintendo Switch 2 Edition
+      - 星のカービィディスカバリー Nintendo Switch 2 Edition
+      - スーパーマリオパーティ ジャンボリー Nintendo Switch 2 Edition
       - マリオカートワールド
-      - HADES II Switch
-      - サイバーパンク2077 Switch
       - ドンキーコング バナンザ
-      - ゼルダの伝説 ブレスオブザワイルド Switch 2
-      - ゼルダの伝説 ティアーズ Switch 2
+      - HADES II
     price_max: 8500
+    category_id: 702
     interval_sec: 90

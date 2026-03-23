@@ -10,7 +10,7 @@ import {
 } from "@mercari-bot/core";
 import { getEnabledKeywords } from "@mercari-bot/db";
 
-import { pruneOldScanRuns, refreshDailyKeywordMarketStats } from "./market-stats.js";
+import { pruneOldScanRuns, refreshDailyItemMarketStats, refreshDailyKeywordMarketStats } from "./market-stats.js";
 import { scanKeyword } from "./scanner.js";
 import { sendDailySummary } from "./notifier.js";
 
@@ -127,6 +127,12 @@ async function maybeRunDailyMaintenance(nowEpochSec: number, deps: SchedulerDeps
     await refreshDailyKeywordMarketStats(now, deps);
   } catch (error) {
     logger.error({ error: redactUnknown(error) }, "Daily market stats refresh failed");
+  }
+
+  try {
+    await refreshDailyItemMarketStats(now, deps);
+  } catch (error) {
+    logger.error({ error: redactUnknown(error) }, "Daily item market stats refresh failed");
   }
 
   try {
