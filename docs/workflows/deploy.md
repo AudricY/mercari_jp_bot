@@ -49,6 +49,8 @@ ANALYTICS_SESSION_PASSWORD=<32+ character random secret>
 
 The analytics app should stay private even with app-level auth. Prefer keeping port `3001` restricted at the firewall or reverse proxy layer.
 
+Current state as of 2026-06-28: `docker-compose.yml` publishes analytics as `3001:3001`, the VPS `iptables` allows inbound `3001`, and the analytics login page is externally reachable. Treat this as the current state to remediate, not the intended steady state.
+
 ## Rollback
 
 ```bash
