@@ -128,6 +128,98 @@ describe("scanKeyword listing ingestion", () => {
     expect(run.status).toBe("success");
   });
 
+  it("records per-term scan stats for multi-term keywords", async () => {
+    const keyword = await createKeyword({ terms: ["vita", "psp"] });
+    vi.mocked(scanMercariTerm)
+      .mockResolvedValueOnce([listing({ id: "m-vita", price: 9999 })])
+      .mockResolvedValueOnce([]);
+
+    const result = await scanKeyword(keyword.id, "manual", {
+      config: ctx.config,
+      logger: ctx.logger,
+      metrics: ctx.metrics,
+      prisma: ctx.prisma,
+    });
+
+    expect(result.itemsFound).toBe(1);
+    expect(result.itemsNew).toBe(1);
+
+    const run = await ctx.prisma.scanRun.findFirstOrThrow({
+      include: { terms: { orderBy: { createdAt: "asc" } } },
+    });
+    expect(run.status).toBe("success");
+    expect(run.termsAttempted).toBe(2);
+    expect(run.termsSucceeded).toBe(2);
+    expect(run.termsRateLimited).toBe(0);
+    expect(run.termsFailed).toBe(0);
+    expect(run.terms.map((term) => ({
+      term: term.term,
+      status: term.status,
+      itemsFound: term.itemsFound,
+      itemsNew: term.itemsNew,
+    }))).toEqual([
+      { term: "vita", status: "success", itemsFound: 1, itemsNew: 1 },
+      { term: "psp", status: "success", itemsFound: 0, itemsNew: 0 },
+    ]);
+  });
+
+  it("stops remaining terms and marks the run rate_limited when Mercari returns 429 first", async () => {
+    const keyword = await createKeyword({ terms: ["vita", "psp"] });
+    vi.mocked(scanMercariTerm).mockRejectedValueOnce(new Error("Mercari API responded with 429: Too Many Requests"));
+
+    const result = await scanKeyword(keyword.id, "manual", {
+      config: ctx.config,
+      logger: ctx.logger,
+      metrics: ctx.metrics,
+      prisma: ctx.prisma,
+    });
+
+    expect(result.itemsFound).toBe(0);
+    expect(result.itemsNew).toBe(0);
+    expect(scanMercariTerm).toHaveBeenCalledTimes(1);
+
+    const run = await ctx.prisma.scanRun.findFirstOrThrow({
+      include: { terms: true },
+    });
+    expect(run.status).toBe("rate_limited");
+    expect(run.errorCode).toBe("rate_limited");
+    expect(run.termsAttempted).toBe(1);
+    expect(run.termsSucceeded).toBe(0);
+    expect(run.termsRateLimited).toBe(1);
+    expect(run.termsFailed).toBe(0);
+    expect(run.terms).toHaveLength(1);
+    expect(run.terms[0]).toMatchObject({
+      term: "vita",
+      status: "rate_limited",
+      statusCode: 429,
+      itemsFound: 0,
+      itemsNew: 0,
+    });
+  });
+
+  it("marks the run partial when a later term is rate-limited", async () => {
+    const keyword = await createKeyword({ terms: ["vita", "psp"] });
+    vi.mocked(scanMercariTerm)
+      .mockResolvedValueOnce([listing({ id: "m-vita", price: 9999 })])
+      .mockRejectedValueOnce(new Error("Mercari API responded with 429: Too Many Requests"));
+
+    await scanKeyword(keyword.id, "manual", {
+      config: ctx.config,
+      logger: ctx.logger,
+      metrics: ctx.metrics,
+      prisma: ctx.prisma,
+    });
+
+    const run = await ctx.prisma.scanRun.findFirstOrThrow({
+      include: { terms: { orderBy: { createdAt: "asc" } } },
+    });
+    expect(run.status).toBe("partial");
+    expect(run.termsAttempted).toBe(2);
+    expect(run.termsSucceeded).toBe(1);
+    expect(run.termsRateLimited).toBe(1);
+    expect(run.terms.map((term) => term.status)).toEqual(["success", "rate_limited"]);
+  });
+
   it("skips missing or disabled keywords", async () => {
     const missing = await scanKeyword("missing-keyword", "manual", {
       config: ctx.config,
@@ -148,13 +240,13 @@ describe("scanKeyword listing ingestion", () => {
     expect(await ctx.prisma.scanRun.count()).toBe(0);
   });
 
-  async function createKeyword(overrides: { enabled?: boolean } = {}) {
+  async function createKeyword(overrides: { enabled?: boolean; terms?: unknown } = {}) {
     return ctx.prisma.keyword.create({
       data: {
         id: uniqueId("kw"),
         name: uniqueId("keyword"),
         enabled: overrides.enabled ?? true,
-        terms: ["vita"],
+        terms: overrides.terms ?? ["vita"],
         filters: {},
         intervalSec: 60,
       },

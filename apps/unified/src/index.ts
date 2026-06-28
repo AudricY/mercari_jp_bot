@@ -4,6 +4,7 @@ import { buildLogger, buildMetrics, loadConfig, redactUnknown } from "@mercari-b
 import { createPrismaClient, initPrisma } from "@mercari-bot/db";
 
 import { createApi } from "./api.js";
+import { MercariRequestScheduler } from "./mercari-request-scheduler.js";
 import { startNotificationProcessor } from "./notifier.js";
 import { startScheduler } from "./scheduler.js";
 import { syncConfigFromDisk } from "./sync.js";
@@ -12,8 +13,9 @@ const config = loadConfig();
 const logger = buildLogger(config.LOG_LEVEL);
 const metrics = buildMetrics();
 const prisma = createPrismaClient();
+const mercariRequests = new MercariRequestScheduler({ config, logger, metrics });
 
-const deps = { config, logger, metrics, prisma };
+const deps = { config, logger, metrics, prisma, mercariRequests };
 
 async function main(): Promise<void> {
   await initPrisma(prisma);

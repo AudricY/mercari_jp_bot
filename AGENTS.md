@@ -22,6 +22,7 @@ details here.
 - Keep secrets in env only. Do not commit `.env` or `data/`.
 - Run `pnpm run typecheck` before finishing code changes.
 - Run `pnpm run db:generate` after Prisma schema changes.
+- Send all Mercari search/detail calls through `MercariRequestScheduler`; scheduler concurrency alone does not protect against API 429s.
 
 ## Route Details
 

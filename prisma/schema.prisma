@@ -115,11 +115,35 @@ model ScanRun {
   status      String       @default("running")
   itemsFound  Int          @default(0) @map("items_found")
   itemsNew    Int          @default(0) @map("items_new")
+  termsAttempted Int       @default(0) @map("terms_attempted")
+  termsSucceeded Int       @default(0) @map("terms_succeeded")
+  termsRateLimited Int     @default(0) @map("terms_rate_limited")
+  termsFailed Int          @default(0) @map("terms_failed")
   errorCode   String?      @map("error_code")
   errorMessage String?     @map("error_message")
+  terms       ScanRunTerm[]
 
   @@index([keywordId, startedAt])
   @@map("scan_runs")
+}
+
+model ScanRunTerm {
+  id           String   @id @default(uuid())
+  scanRunId    String   @map("scan_run_id")
+  term         String
+  status       String
+  statusCode   Int?     @map("status_code")
+  itemsFound   Int      @default(0) @map("items_found")
+  itemsNew     Int      @default(0) @map("items_new")
+  durationMs   Int      @default(0) @map("duration_ms")
+  errorMessage String?  @map("error_message")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  scanRun      ScanRun  @relation(fields: [scanRunId], references: [id], onDelete: Cascade)
+
+  @@index([scanRunId])
+  @@index([status])
+  @@map("scan_run_terms")
 }
 
 model Notification {

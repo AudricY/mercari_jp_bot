@@ -177,23 +177,35 @@ describe("market stats maintenance", () => {
       },
     });
 
-    await ctx.prisma.scanRun.createMany({
-      data: [
-        {
-          id: uniqueId("run"),
-          keywordId: keyword.id,
-          startedAt: isoDate("2026-01-01T00:00:00.000Z"),
-          finishedAt: isoDate("2026-01-01T00:01:00.000Z"),
-          status: "success",
+    const oldRun = await ctx.prisma.scanRun.create({
+      data: {
+        id: uniqueId("run"),
+        keywordId: keyword.id,
+        startedAt: isoDate("2026-01-01T00:00:00.000Z"),
+        finishedAt: isoDate("2026-01-01T00:01:00.000Z"),
+        status: "success",
+        terms: {
+          create: {
+            term: "old",
+            status: "success",
+          },
         },
-        {
-          id: uniqueId("run"),
-          keywordId: keyword.id,
-          startedAt: isoDate("2026-03-01T00:00:00.000Z"),
-          finishedAt: isoDate("2026-03-01T00:01:00.000Z"),
-          status: "success",
+      },
+    });
+    const retainedRun = await ctx.prisma.scanRun.create({
+      data: {
+        id: uniqueId("run"),
+        keywordId: keyword.id,
+        startedAt: isoDate("2026-03-01T00:00:00.000Z"),
+        finishedAt: isoDate("2026-03-01T00:01:00.000Z"),
+        status: "success",
+        terms: {
+          create: {
+            term: "retained",
+            status: "success",
+          },
         },
-      ],
+      },
     });
 
     await pruneOldScanRuns(isoDate("2026-03-09T00:00:00.000Z"), {
@@ -204,5 +216,10 @@ describe("market stats maintenance", () => {
     const runs = await ctx.prisma.scanRun.findMany({ orderBy: { startedAt: "asc" } });
     expect(runs).toHaveLength(1);
     expect(runs[0]!.startedAt.toISOString()).toBe("2026-03-01T00:00:00.000Z");
+
+    const terms = await ctx.prisma.scanRunTerm.findMany();
+    expect(terms).toHaveLength(1);
+    expect(terms[0]!.scanRunId).toBe(retainedRun.id);
+    expect(terms[0]!.scanRunId).not.toBe(oldRun.id);
   });
 });

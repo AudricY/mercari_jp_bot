@@ -11,6 +11,7 @@ import {
 import { getEnabledKeywords } from "@mercari-bot/db";
 
 import { pruneOldScanRuns, refreshDailyItemMarketStats, refreshDailyKeywordMarketStats } from "./market-stats.js";
+import type { MercariRequestScheduler } from "./mercari-request-scheduler.js";
 import { scanKeyword } from "./scanner.js";
 import { sendDailySummary } from "./notifier.js";
 
@@ -19,6 +20,7 @@ export interface SchedulerDeps {
   logger: Logger;
   metrics: Metrics;
   prisma: PrismaClient;
+  mercariRequests?: MercariRequestScheduler;
 }
 
 const lastKeywordSchedule = new Map<string, number>();

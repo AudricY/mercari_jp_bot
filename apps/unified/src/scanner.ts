@@ -14,12 +14,14 @@ import {
 } from "@mercari-bot/core";
 
 import { classifyListing, loadCompiledItems } from "./items.js";
+import { MercariRequestScheduler, mercariStatusCode } from "./mercari-request-scheduler.js";
 
 export interface ScannerDeps {
   config: AppConfig;
   logger: Logger;
   metrics: Metrics;
   prisma: PrismaClient;
+  mercariRequests?: MercariRequestScheduler;
 }
 
 function parseFilters(raw: unknown): {
@@ -77,6 +79,10 @@ export async function scanKeyword(
   const startedAt = Date.now();
   let itemsFound = 0;
   let itemsNew = 0;
+  let termsAttempted = 0;
+  let termsSucceeded = 0;
+  let termsRateLimited = 0;
+  let termsFailed = 0;
 
   try {
     const filters = parseFilters(keyword.filters);
@@ -84,28 +90,59 @@ export async function scanKeyword(
       ? keyword.terms.filter((term): term is string => typeof term === "string")
       : [];
     const items = await loadCompiledItems(prisma);
+    const mercariRequests =
+      deps.mercariRequests ?? new MercariRequestScheduler({ config, logger, metrics });
 
     for (const term of terms) {
       let scraped = [];
+      let termItemsNew = 0;
+      const termStartedAt = Date.now();
 
       try {
-        scraped = await scanMercariTerm({
-          term,
-          filters,
-          timeoutMs: config.SCRAPE_HTTP_TIMEOUT_MS,
-          maxItems: config.SCRAPE_MAX_ITEMS_PER_TERM,
-        });
+        termsAttempted += 1;
+        scraped = await mercariRequests.request("search", () =>
+          scanMercariTerm({
+            term,
+            filters,
+            timeoutMs: config.SCRAPE_HTTP_TIMEOUT_MS,
+            maxItems: config.SCRAPE_MAX_ITEMS_PER_TERM,
+          }),
+        );
+        termsSucceeded += 1;
+        metrics.scanTermsTotal.labels(keyword.name, "success").inc();
       } catch (error) {
+        const statusCode = mercariStatusCode(error);
         metrics.scrapeRequestFailuresTotal.labels(keyword.name).inc();
+        if (statusCode === 429) {
+          termsRateLimited += 1;
+          metrics.scanTermsTotal.labels(keyword.name, "rate_limited").inc();
+        } else {
+          termsFailed += 1;
+          metrics.scanTermsTotal.labels(keyword.name, "failed").inc();
+        }
         logger.error(
           {
             keywordId: keyword.id,
             keywordName: keyword.name,
             term,
+            statusCode,
             error: redactUnknown(error),
           },
           "Mercari API scan failed for term",
         );
+        await prisma.scanRunTerm.create({
+          data: {
+            scanRunId: run.id,
+            term,
+            status: statusCode === 429 ? "rate_limited" : "failed",
+            statusCode,
+            durationMs: Date.now() - termStartedAt,
+            errorMessage: error instanceof Error ? error.message.slice(0, 500) : "unknown_error",
+          },
+        });
+        if (statusCode === 429) {
+          break;
+        }
         continue;
       }
 
@@ -219,10 +256,12 @@ export async function scanKeyword(
 
         if (config.SCRAPE_DETAIL_ENABLED && sourceListingId) {
           try {
-            const rawDetailJson = await fetchMercariItemDetail({
-              itemId: sourceListingId,
-              timeoutMs: config.SCRAPE_HTTP_TIMEOUT_MS,
-            });
+            const rawDetailJson = await mercariRequests.request("detail", () =>
+              fetchMercariItemDetail({
+                itemId: sourceListingId,
+                timeoutMs: config.SCRAPE_HTTP_TIMEOUT_MS,
+              }),
+            );
             const refinedMatch = classifyListing(
               {
                 title: listing.title,
@@ -256,6 +295,7 @@ export async function scanKeyword(
         }
 
         itemsNew += 1;
+        termItemsNew += 1;
         await prisma.notification.create({
           data: {
             listingId: savedListing.id,
@@ -265,14 +305,31 @@ export async function scanKeyword(
           },
         });
       }
+
+      await prisma.scanRunTerm.create({
+        data: {
+          scanRunId: run.id,
+          term,
+          status: "success",
+          itemsFound: scraped.length,
+          itemsNew: termItemsNew,
+          durationMs: Date.now() - termStartedAt,
+        },
+      });
     }
 
     await prisma.scanRun.update({
       where: { id: run.id },
       data: {
-        status: "success",
+        status: scanRunStatus({ terms, termsSucceeded, termsRateLimited, termsFailed }),
         itemsFound,
         itemsNew,
+        termsAttempted,
+        termsSucceeded,
+        termsRateLimited,
+        termsFailed,
+        errorCode: termsRateLimited > 0 ? "rate_limited" : termsFailed > 0 ? "term_failed" : null,
+        errorMessage: scanRunErrorMessage({ terms, termsAttempted, termsSucceeded, termsRateLimited, termsFailed }),
         finishedAt: new Date(),
       },
     });
@@ -287,6 +344,10 @@ export async function scanKeyword(
         keywordName: keyword.name,
         itemsFound,
         itemsNew,
+        termsAttempted,
+        termsSucceeded,
+        termsRateLimited,
+        termsFailed,
         triggeredBy,
       },
       "Scan finished",
@@ -314,4 +375,39 @@ export async function scanKeyword(
   }
 
   return { runId: run.id, itemsFound, itemsNew };
+}
+
+function scanRunStatus(params: {
+  terms: string[];
+  termsSucceeded: number;
+  termsRateLimited: number;
+  termsFailed: number;
+}): string {
+  if (params.termsRateLimited > 0 && params.termsSucceeded === 0) {
+    return "rate_limited";
+  }
+  if (params.termsRateLimited > 0 || params.termsFailed > 0 || params.termsSucceeded < params.terms.length) {
+    return "partial";
+  }
+  return "success";
+}
+
+function scanRunErrorMessage(params: {
+  terms: string[];
+  termsAttempted: number;
+  termsSucceeded: number;
+  termsRateLimited: number;
+  termsFailed: number;
+}): string | null {
+  if (params.termsRateLimited === 0 && params.termsFailed === 0) {
+    return null;
+  }
+
+  return [
+    `terms=${params.terms.length}`,
+    `attempted=${params.termsAttempted}`,
+    `succeeded=${params.termsSucceeded}`,
+    `rateLimited=${params.termsRateLimited}`,
+    `failed=${params.termsFailed}`,
+  ].join(" ");
 }

@@ -6,6 +6,7 @@ import { redactUnknown, type AppConfig, type Metrics } from "@mercari-bot/core";
 
 import { registerAnalyticsRoutes } from "./analytics.js";
 import { assertAdminAccess } from "./auth.js";
+import type { MercariRequestScheduler } from "./mercari-request-scheduler.js";
 import { scanKeyword } from "./scanner.js";
 import { syncConfigFromDisk } from "./sync.js";
 
@@ -14,6 +15,7 @@ export interface ApiDeps {
   logger: Logger;
   metrics: Metrics;
   prisma: PrismaClient;
+  mercariRequests?: MercariRequestScheduler;
 }
 
 export function createApi(deps: ApiDeps) {
@@ -67,7 +69,10 @@ export function createApi(deps: ApiDeps) {
   });
 
   app.get<{ Params: { id: string } }>("/v1/runs/:id", async (request, reply) => {
-    const run = await prisma.scanRun.findUnique({ where: { id: request.params.id } });
+    const run = await prisma.scanRun.findUnique({
+      where: { id: request.params.id },
+      include: { terms: { orderBy: { createdAt: "asc" } } },
+    });
     if (!run) {
       return reply.code(404).send({ error: "Run not found" });
     }

@@ -37,6 +37,18 @@ function applyListingFilters(listing: { title: string }, filters: ScanFilters): 
 
 const API_URL = "https://api.mercari.jp/v2/entities:search";
 
+export class MercariApiError extends Error {
+  constructor(
+    message: string,
+    readonly endpoint: "search" | "detail",
+    readonly statusCode: number,
+    readonly responseBody: string,
+  ) {
+    super(message);
+    this.name = "MercariApiError";
+  }
+}
+
 export async function scanMercariTerm(params: {
   term: string;
   filters: ScanFilters;
@@ -97,7 +109,13 @@ export async function scanMercariTerm(params: {
   });
 
   if (!response.ok) {
-    throw new Error(`Mercari API responded with ${response.status}: ${await response.text()}`);
+    const responseBody = await response.text();
+    throw new MercariApiError(
+      `Mercari API responded with ${response.status}: ${responseBody}`,
+      "search",
+      response.status,
+      responseBody,
+    );
   }
 
   const data = (await response.json()) as {
@@ -153,7 +171,13 @@ export async function fetchMercariItemDetail(params: {
   });
 
   if (!response.ok) {
-    throw new Error(`Mercari item detail API responded with ${response.status}: ${await response.text()}`);
+    const responseBody = await response.text();
+    throw new MercariApiError(
+      `Mercari item detail API responded with ${response.status}: ${responseBody}`,
+      "detail",
+      response.status,
+      responseBody,
+    );
   }
 
   const data = await response.json();

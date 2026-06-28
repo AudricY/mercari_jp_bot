@@ -1,4 +1,4 @@
-import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client";
+import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from "prom-client";
 
 import { METRIC_NAMES } from "./constants.js";
 
@@ -7,8 +7,13 @@ export interface Metrics {
   scanDurationSeconds: Histogram;
   scanItemsFoundTotal: Counter;
   scanItemsNewTotal: Counter;
+  scanTermsTotal: Counter;
   notificationSendTotal: Counter;
   scrapeRequestFailuresTotal: Counter;
+  mercariRequestsTotal: Counter;
+  mercariRequestDurationSeconds: Histogram;
+  mercariRateLimitCooldownsTotal: Counter;
+  mercariRequestQueueDepth: Gauge;
 }
 
 export function buildMetrics(prefix = "mercari_bot_"): Metrics {
@@ -37,6 +42,13 @@ export function buildMetrics(prefix = "mercari_bot_"): Metrics {
     labelNames: ["keyword"] as const,
   });
 
+  const scanTermsTotal = new Counter({
+    name: `${prefix}${METRIC_NAMES.scanTermsTotal}`,
+    help: "Total scan terms by result",
+    registers: [registry],
+    labelNames: ["keyword", "result"] as const,
+  });
+
   const notificationSendTotal = new Counter({
     name: `${prefix}${METRIC_NAMES.notificationSendTotal}`,
     help: "Total notification sends by status",
@@ -51,12 +63,46 @@ export function buildMetrics(prefix = "mercari_bot_"): Metrics {
     labelNames: ["keyword"] as const,
   });
 
+  const mercariRequestsTotal = new Counter({
+    name: `${prefix}${METRIC_NAMES.mercariRequestsTotal}`,
+    help: "Total Mercari API requests by endpoint, status code, and result",
+    registers: [registry],
+    labelNames: ["endpoint", "status_code", "result"] as const,
+  });
+
+  const mercariRequestDurationSeconds = new Histogram({
+    name: `${prefix}${METRIC_NAMES.mercariRequestDurationSeconds}`,
+    help: "Duration of Mercari API requests in seconds",
+    buckets: [0.1, 0.25, 0.5, 1, 2, 5, 10, 20],
+    registers: [registry],
+    labelNames: ["endpoint"] as const,
+  });
+
+  const mercariRateLimitCooldownsTotal = new Counter({
+    name: `${prefix}${METRIC_NAMES.mercariRateLimitCooldownsTotal}`,
+    help: "Total Mercari rate-limit cooldowns entered",
+    registers: [registry],
+    labelNames: ["endpoint"] as const,
+  });
+
+  const mercariRequestQueueDepth = new Gauge({
+    name: `${prefix}${METRIC_NAMES.mercariRequestQueueDepth}`,
+    help: "Queued Mercari API requests by endpoint",
+    registers: [registry],
+    labelNames: ["endpoint"] as const,
+  });
+
   return {
     registry,
     scanDurationSeconds,
     scanItemsFoundTotal,
     scanItemsNewTotal,
+    scanTermsTotal,
     notificationSendTotal,
     scrapeRequestFailuresTotal,
+    mercariRequestsTotal,
+    mercariRequestDurationSeconds,
+    mercariRateLimitCooldownsTotal,
+    mercariRequestQueueDepth,
   };
 }
