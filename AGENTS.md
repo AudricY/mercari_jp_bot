@@ -28,6 +28,7 @@ details here.
 
 - DB and migrations: `docs/workflows/database.md`
 - Deploy and keyword reload: `docs/workflows/deploy.md`
+- Mercari rate-limit probing: `docs/workflows/mercari-rate-limit-probe.md`
 - VPS access and firewall: `docs/oracle-vps.md`
 - Switch keyword/search behavior: `docs/switch-software-keywords.md`
 - Analytics context: `docs/analytics-bi-epic.md`

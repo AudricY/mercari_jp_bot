@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.22.0",
   "description": "Mercari JP monitoring platform rewritten in Node.js/TypeScript",
   "dependencies": {
+    "@mercari-bot/core": "workspace:*",
     "@mercari-bot/db": "workspace:*",
     "@prisma/client": "^6.19.2",
     "yaml": "^2.7.0"
@@ -18,7 +19,8 @@
     "lint": "pnpm -r --if-present run lint",
     "db:generate": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "db:migrate:dev": "prisma migrate dev"
+    "db:migrate:dev": "prisma migrate dev",
+    "probe:mercari-rate": "tsx scripts/mercari-rate-probe.ts"
   },
   "engines": {
     "node": ">=20.11.0"

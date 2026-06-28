@@ -17,7 +17,7 @@ const envSchema = z.object({
   SCRAPE_CONCURRENCY: z.coerce.number().int().positive().default(2),
   SCRAPE_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   SCRAPE_MAX_ITEMS_PER_TERM: z.coerce.number().int().positive().default(100),
-  SCRAPE_SEARCH_MIN_DELAY_MS: z.coerce.number().int().min(0).default(2000),
+  SCRAPE_SEARCH_MIN_DELAY_MS: z.coerce.number().int().min(0).default(1250),
   SCRAPE_DETAIL_ENABLED: z.coerce.boolean().default(true),
   SCRAPE_DETAIL_DELAY_MS: z.coerce.number().int().min(0).default(500),
   SCRAPE_DETAIL_MIN_DELAY_MS: z.coerce.number().int().min(0).default(3000),
