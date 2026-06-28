@@ -3,6 +3,11 @@
 Minimal routing for agents. Prefer source files and docs over duplicating
 details here.
 
+## How to work
+
+- Always plan changes before making
+- Docs must be kept up to date
+
 ## Start Here
 
 - Scripts and tool versions: `package.json`
