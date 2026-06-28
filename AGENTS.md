@@ -1,93 +1,27 @@
-# Mercari JP Bot — Agent Guide
+# Mercari JP Bot - Agent Notes
 
-## Commands
+Minimal routing for agents. Prefer source files and docs over duplicating
+details here.
 
-| Task | Command |
-|---|---|
-| Install deps | `pnpm install` |
-| Generate Prisma client | `pnpm run db:generate` |
-| Migrate DB (dev) | `pnpm run db:migrate:dev -- --name <name>` |
-| Migrate DB (prod) | `pnpm run db:migrate` |
-| Build | `pnpm run build` |
-| Typecheck | `pnpm run typecheck` |
-| Test | `pnpm run test` |
-| Dev mode | `pnpm --filter @mercari-bot/unified run dev` |
-| Start | `pnpm --filter @mercari-bot/unified run start` |
-| Deploy (build+push) | `docker build -t ghcr.io/audricy/mercari-jp-bot:latest . && docker push ghcr.io/audricy/mercari-jp-bot:latest` |
-| Deploy (VPS pull) | `ssh ubuntu@161.118.204.72 'cd ~/mercari_jp_bot && git pull && docker compose pull && docker compose down && docker compose up -d'` |
-| Reload keywords | `curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:3000/v1/config/reload` |
+## Start Here
 
-## What This Is
+- Scripts and tool versions: `package.json`
+- Main app: `apps/unified/src/`
+- Shared code: `packages/core/`, `packages/db/`
+- Schema/migrations: `prisma/`
+- Keyword config: `config.yaml`
 
-TypeScript monorepo: monitors Mercari Japan by keyword, sends Telegram alerts for new/cheaper items. Single Node.js process (API + scheduler + scraper + notifier), SQLite via Prisma, deployed via Docker on Oracle Cloud VPS.
+## Hard Rules
 
-## Layout
+- Use `pnpm` only.
+- Keep secrets in env only. Do not commit `.env` or `data/`.
+- Run `pnpm run typecheck` before finishing code changes.
+- Run `pnpm run db:generate` after Prisma schema changes.
 
-```
-apps/unified/          — Single-process app: API + scheduler + scraper + notifier
-packages/core/         — Config, logging, types, metrics, scraping, dedup
-packages/db/           — Prisma client wrappers, keyword helpers
-prisma/                — Schema + migrations (SQLite)
-config.yaml            — Keyword definitions (source of truth, synced to DB on startup/reload)
-```
+## Route Details
 
-### Key Modules (`apps/unified/src/`)
-
-| File | Role |
-|---|---|
-| `api.ts` | Fastify server — health, metrics, keywords, config reload, admin |
-| `scheduler.ts` | Periodic scan + daily summary scheduling |
-| `scanner.ts` | Mercari scraping, dedup, listing persistence |
-| `notifier.ts` | Telegram delivery with retry/backoff |
-| `auth.ts` | Admin token + IP allowlist middleware |
-| `sync.ts` | Syncs `config.yaml` → DB keywords |
-
-### Data Model
-
-`keywords` → `listings` → `notifications`; plus `seen_listings` (dedup), `scan_runs` (audit), `daily_keyword_counts` (stats).
-
-## Stack
-
-TypeScript (ESM, strict) · Node 20+ · pnpm 10 · Fastify 5 · Prisma/SQLite · Pino · Zod · Vitest · Docker
-
-## Conventions
-
-- **pnpm only.** No npm/yarn.
-- **ESM everywhere.** `"type": "module"`, `workspace:*` for internal deps.
-- **`db:generate` after schema changes.** Prisma client is generated code.
-- **`typecheck` before done.** Always verify.
-- **Build before start.** App runs from `dist/`.
-- **Structured logging.** Pino via `@mercari-bot/core`, never `console.log`.
-- **Env-only secrets.** No hardcoded tokens. Never commit `.env` or `data/`.
-- **Branch strategy.** `main` is production. Feature branches merge into `main`.
-
-## DB Migration Workflow
-
-1. Edit `prisma/schema.prisma`
-2. `pnpm run db:migrate:dev -- --name <name>`
-3. `pnpm run db:generate`
-4. `pnpm run build && pnpm run typecheck`
-5. Commit migration files in `prisma/migrations/`
-
-Production migrations run automatically via Docker Compose (`prisma migrate deploy`).
-
-## Gotchas
-
-- **Prisma `file:` paths** resolve relative to `prisma/schema.prisma`, not cwd. Docker overrides to absolute `file:/app/data/mercari.db`.
-- **`node:22-slim` needs OpenSSL** — Dockerfile installs it for Prisma.
-- **`pnpm --filter` sets cwd** to the package dir (`apps/unified/`), not repo root. Use `CONFIG_PATH` env var.
-- **`title_must_contain` is OR-based.** It matches if any listed token appears in the title, so search-term specificity usually matters more than adding many required tokens.
-- **Analytics is snapshot-based now.** `listings` is the canonical current-state store; daily history comes from `daily_keyword_market_stats`, not per-rescrape observation rows.
-- **SQLite won’t shrink after dropping large tables until `VACUUM`.** Stop the app first so the DB file can be compacted safely.
-
-## Ops Docs
-
-- Deployment workflow: [`docs/workflows/deploy.md`](./docs/workflows/deploy.md)
-- VPS details: [`docs/oracle-vps.md`](./docs/oracle-vps.md)
-
-## Continuous Documentation
-
-When you discover gotchas or non-obvious context, write it down:
-- Broad notes → this file
-- Workflow-specific → `docs/workflows/`
-- Package-specific → README in that package
+- DB and migrations: `docs/workflows/database.md`
+- Deploy and keyword reload: `docs/workflows/deploy.md`
+- VPS access and firewall: `docs/oracle-vps.md`
+- Switch keyword/search behavior: `docs/switch-software-keywords.md`
+- Analytics context: `docs/analytics-bi-epic.md`
