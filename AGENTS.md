@@ -17,6 +17,7 @@ details here.
 - Keyword config: `config.yaml`
 - Market-collection categories: `catalog/market-categories.yaml`
 - eBay collection queries: `catalog/ebay-queries.yaml`
+- Arbitrage products and fee model: `catalog/arbitrage-products.yaml`
 
 ## Hard Rules
 
@@ -37,6 +38,7 @@ details here.
 - Mercari API capabilities / what to scrape: `docs/mercari-scrape-intelligence.md`
 - Market collection (categories, sold prices): `docs/workflows/market-collection.md`
 - eBay collection (Browse API, queries): `docs/workflows/ebay-collection.md`
+- Arbitrage (cross-market economics, alerts): `docs/workflows/arbitrage.md`
 - VPS access and firewall: `docs/oracle-vps.md`
 - Switch keyword/search behavior: `docs/switch-software-keywords.md`
 - Analytics context: `docs/analytics-bi-epic.md`
