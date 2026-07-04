@@ -2,6 +2,8 @@
 
 Use `scripts/mercari-rate-probe.ts` to estimate the current safe search-request ceiling for the VPS IP.
 
+For API *capability* probing (sold search, pagination, category tree, filters) use `pnpm run probe:mercari-capabilities` instead — findings are recorded in `docs/mercari-scrape-intelligence.md`.
+
 This is an empirical probe, not a contract from Mercari. Run it during a maintenance window because the app scheduler should be stopped to avoid contaminating the result.
 
 ## Command

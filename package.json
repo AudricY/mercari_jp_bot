@@ -20,7 +20,8 @@
     "db:generate": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
-    "probe:mercari-rate": "tsx scripts/mercari-rate-probe.ts"
+    "probe:mercari-rate": "tsx scripts/mercari-rate-probe.ts",
+    "probe:mercari-capabilities": "tsx scripts/mercari-capability-probe.ts"
   },
   "engines": {
     "node": ">=20.11.0"

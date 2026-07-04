@@ -22,6 +22,9 @@ data/
 # Logs
 *.log
 
+# Scratch/probe output
+tmp/
+
 # Test & coverage
 coverage/
 playwright-report/

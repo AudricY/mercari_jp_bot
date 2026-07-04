@@ -36,6 +36,8 @@ function applyListingFilters(listing: { title: string }, filters: ScanFilters): 
 }
 
 const API_URL = "https://api.mercari.jp/v2/entities:search";
+const MERCARI_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 export class MercariApiError extends Error {
   constructor(
@@ -49,32 +51,75 @@ export class MercariApiError extends Error {
   }
 }
 
-export async function scanMercariTerm(params: {
-  term: string;
-  filters: ScanFilters;
-  timeoutMs: number;
-  maxItems: number;
-}): Promise<ScrapedListing[]> {
+export type MercariSearchStatus = "STATUS_ON_SALE" | "STATUS_SOLD_OUT" | "STATUS_TRADING";
+export type MercariSearchSort = "SORT_SCORE" | "SORT_CREATED_TIME" | "SORT_PRICE" | "SORT_NUM_LIKES";
+export type MercariSearchOrder = "ORDER_DESC" | "ORDER_ASC";
+
+export interface MercariSearchParams {
+  keyword?: string;
+  excludeKeyword?: string;
+  categoryId?: number[];
+  status?: MercariSearchStatus[];
+  sort?: MercariSearchSort;
+  order?: MercariSearchOrder;
+  priceMin?: number | null;
+  priceMax?: number | null;
+  itemConditionId?: number[];
+  pageSize?: number;
+  pageToken?: string;
+  timeoutMs?: number;
+}
+
+/** Raw search hit. Numeric-looking fields arrive as strings from the API. */
+export interface MercariSearchItem {
+  id: string;
+  sellerId?: string;
+  buyerId?: string;
+  status?: string;
+  name: string;
+  price: string | number;
+  created?: string;
+  updated?: string;
+  categoryId?: string;
+  itemConditionId?: string;
+  shippingPayerId?: string;
+  shippingMethodId?: string;
+  itemType?: string;
+  thumbnails?: string[];
+  [key: string]: unknown;
+}
+
+export interface MercariSearchResult {
+  items: MercariSearchItem[];
+  numFound: number | null;
+  nextPageToken: string;
+}
+
+/**
+ * Low-level Mercari search. Single page per call; pass back `nextPageToken`
+ * (format "v1:<page>") to paginate. Max pageSize observed working: 120.
+ */
+export async function searchMercari(params: MercariSearchParams): Promise<MercariSearchResult> {
   const body = {
     userId: "",
-    pageSize: params.maxItems,
-    pageToken: "",
+    pageSize: params.pageSize ?? 120,
+    pageToken: params.pageToken ?? "",
     searchSessionId: crypto.randomUUID().replace(/-/g, ""),
     indexRouting: "INDEX_ROUTING_UNSPECIFIED",
     thumbnailTypes: [],
     searchCondition: {
-      keyword: params.term,
-      excludeKeyword: params.filters.excludeKeyword ?? "",
-      sort: "SORT_CREATED_TIME",
-      order: "ORDER_DESC",
-      status: ["STATUS_ON_SALE"],
+      keyword: params.keyword ?? "",
+      excludeKeyword: params.excludeKeyword ?? "",
+      sort: params.sort ?? "SORT_CREATED_TIME",
+      order: params.order ?? "ORDER_DESC",
+      status: params.status ?? ["STATUS_ON_SALE"],
       sizeId: [],
-      categoryId: params.filters.categoryId.length > 0 ? params.filters.categoryId : [],
+      categoryId: params.categoryId ?? [],
       brandId: [],
       sellerId: [],
-      priceMin: params.filters.priceMin ?? 0,
-      priceMax: params.filters.priceMax ?? 0,
-      itemConditionId: [],
+      priceMin: params.priceMin ?? 0,
+      priceMax: params.priceMax ?? 0,
+      itemConditionId: params.itemConditionId ?? [],
       shippingPayerId: [],
       shippingFromArea: [],
       shippingMethod: [],
@@ -100,12 +145,12 @@ export async function scanMercariTerm(params: {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "User-Agent": MERCARI_USER_AGENT,
       "X-Platform": "web",
       DPoP: dpopToken,
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(params.timeoutMs),
+    signal: AbortSignal.timeout(params.timeoutMs ?? 15000),
   });
 
   if (!response.ok) {
@@ -119,17 +164,42 @@ export async function scanMercariTerm(params: {
   }
 
   const data = (await response.json()) as {
-    items?: Array<Record<string, unknown>>;
+    items?: MercariSearchItem[];
+    meta?: { nextPageToken?: string; numFound?: string | number };
   };
 
-  const items = data.items ?? [];
+  const numFoundRaw = data.meta?.numFound;
+  return {
+    items: data.items ?? [],
+    numFound: numFoundRaw === undefined ? null : Number(numFoundRaw),
+    nextPageToken: data.meta?.nextPageToken ?? "",
+  };
+}
+
+export async function scanMercariTerm(params: {
+  term: string;
+  filters: ScanFilters;
+  timeoutMs: number;
+  maxItems: number;
+}): Promise<ScrapedListing[]> {
+  const { items } = await searchMercari({
+    keyword: params.term,
+    excludeKeyword: params.filters.excludeKeyword ?? "",
+    categoryId: params.filters.categoryId,
+    status: ["STATUS_ON_SALE"],
+    sort: "SORT_CREATED_TIME",
+    order: "ORDER_DESC",
+    priceMin: params.filters.priceMin,
+    priceMax: params.filters.priceMax,
+    pageSize: params.maxItems,
+    timeoutMs: params.timeoutMs,
+  });
+
   const parsed: ScrapedListing[] = [];
 
   for (const item of items) {
-    const name = item.name as string;
-    const id = item.id as string;
-    const price = item.price as number;
-    const thumbnails = item.thumbnails as string[] | undefined;
+    const name = item.name;
+    const price = Number(item.price);
 
     if (!applyListingFilters({ title: name }, params.filters)) {
       continue;
@@ -137,8 +207,8 @@ export async function scanMercariTerm(params: {
 
     parsed.push({
       title: name,
-      url: `https://jp.mercari.com/item/${id}`,
-      imageUrl: thumbnails?.[0] ?? "",
+      url: `https://jp.mercari.com/item/${item.id}`,
+      imageUrl: item.thumbnails?.[0] ?? "",
       currency: "¥",
       numericPrice: price,
       rawPriceDisplay: `¥${price.toLocaleString()}`,
@@ -162,8 +232,7 @@ export async function fetchMercariItemDetail(params: {
     method: "GET",
     headers: {
       Accept: "application/json",
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "User-Agent": MERCARI_USER_AGENT,
       "X-Platform": "web",
       DPoP: dpopToken,
     },
