@@ -263,6 +263,55 @@ model DailyCategoryMarketStat {
   @@map("daily_category_market_stats")
 }
 
+model EbayQuery {
+  id                  String    @id // slug from catalog/ebay-queries.yaml
+  label               String
+  marketplaceId       String    @map("marketplace_id")
+  keyword             String?
+  categoryId          String?   @map("category_id") // eBay marketplace category id
+  filter              String? // raw Browse API filter expression
+  platform            String
+  kind                String // software | console | accessory | other
+  enabled             Boolean   @default(true)
+  snapshotIntervalSec Int?      @map("snapshot_interval_sec")
+  newSweepIntervalSec Int?      @map("new_sweep_interval_sec")
+  newCursorCreatedAt  DateTime? @map("new_cursor_created_at")
+  lastSnapshotAt      DateTime? @map("last_snapshot_at")
+  lastNewSweepAt      DateTime? @map("last_new_sweep_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  listings EbayListing[]
+
+  @@map("ebay_queries")
+}
+
+model EbayListing {
+  id             String    @id @default(uuid())
+  ebayItemId     String    @unique @map("ebay_item_id")
+  queryId        String    @map("query_id")
+  title          String
+  price          Decimal
+  currency       String
+  status         String // on_sale | gone
+  condition      String?
+  conditionId    Int?      @map("condition_id")
+  buyingOptions  String?   @map("buying_options") // comma-joined, e.g. "FIXED_PRICE,BEST_OFFER"
+  sellerUsername String?   @map("seller_username")
+  itemWebUrl     String    @map("item_web_url")
+  imageUrl       String?   @map("image_url")
+  ebayCreatedAt  DateTime? @map("ebay_created_at")
+  firstSeenAt    DateTime  @map("first_seen_at")
+  lastSeenAt     DateTime  @map("last_seen_at")
+
+  query EbayQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+
+  @@index([queryId, status, price])
+  @@index([queryId, ebayCreatedAt])
+  @@index([status, lastSeenAt])
+  @@map("ebay_listings")
+}
+
 model DailyItemMarketStat {
   dateUtc         DateTime @map("date_utc")
   itemId          String   @map("item_id")
