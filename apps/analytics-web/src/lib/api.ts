@@ -86,6 +86,112 @@ export interface ListingItem {
   itemSubfamily?: string | null;
 }
 
+export type MarketListingStatus = "on_sale" | "trading" | "sold" | "gone";
+
+export interface MarketCategory {
+  categoryId: number;
+  label: string;
+  platform: string;
+  kind: string;
+  onSaleCount: number;
+  sold7dCount: number;
+  sold30dCount: number;
+  askingMedianPrice: number | null;
+  soldMedianPrice: number | null;
+  medianSpread: number | null;
+  lastSnapshotAt: string | null;
+  lastSoldSweepAt: string | null;
+  lastNewSweepAt: string | null;
+}
+
+export interface MarketTimeseriesPoint {
+  periodStart: string;
+  onSaleCount: number;
+  newListingCount: number;
+  soldCount: number;
+  askingMedianPrice: number | null;
+  soldMedianPrice: number | null;
+}
+
+export interface MarketListing {
+  mercariId: string;
+  url: string;
+  title: string;
+  price: number;
+  status: MarketListingStatus;
+  conditionId: number | null;
+  thumbnailUrl: string | null;
+  listedAt: string | null;
+  soldPrice: number | null;
+  soldObservedAt: string | null;
+  categoryId: number;
+}
+
+export function getMarketCategories() {
+  return apiFetch<{ categories: MarketCategory[] }>(
+    "/v1/analytics/market/categories",
+  );
+}
+
+export function getMarketPriceDistribution(
+  id: string,
+  params?: { status?: string; days?: string; buckets?: string },
+) {
+  return apiFetch<{
+    categoryId: number;
+    label: string;
+    platform: string;
+    kind: string;
+    status: string;
+    days: number;
+    stats: PriceStats;
+    histogram: HistogramBucket[];
+  }>(`/v1/analytics/market/categories/${id}/price-distribution`, params);
+}
+
+export function getMarketTimeseries(
+  id: string,
+  params?: { from?: string; to?: string; granularity?: string },
+) {
+  return apiFetch<{
+    categoryId: number;
+    label: string;
+    granularity: string;
+    series: MarketTimeseriesPoint[];
+  }>(`/v1/analytics/market/categories/${id}/timeseries`, params);
+}
+
+export function getMarketListings(
+  id: string,
+  params?: { status?: string; sort?: string; q?: string; limit?: string; offset?: string },
+) {
+  return apiFetch<{
+    categoryId: number;
+    label: string;
+    status: string;
+    sort: string;
+    q: string;
+    total: number;
+    listings: MarketListing[];
+  }>(`/v1/analytics/market/categories/${id}/listings`, params);
+}
+
+export function searchMarketListings(params: {
+  q: string;
+  status?: string;
+  limit?: string;
+  offset?: string;
+}) {
+  return apiFetch<{
+    q: string;
+    status: string;
+    total: number;
+    askingStats: PriceStats | null;
+    soldStats: PriceStats | null;
+    listings: MarketListing[];
+  }>("/v1/analytics/market/search", params);
+}
+
 export function getItems() {
   return apiFetch<{ items: ItemSummary[] }>(
     "/v1/analytics/items",
