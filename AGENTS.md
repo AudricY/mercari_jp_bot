@@ -16,6 +16,7 @@ details here.
 - Schema/migrations: `prisma/`
 - Keyword config: `config.yaml`
 - Market-collection categories: `catalog/market-categories.yaml`
+- eBay collection queries: `catalog/ebay-queries.yaml`
 
 ## Hard Rules
 
@@ -26,6 +27,7 @@ details here.
 - Run `pnpm run db:generate` after Prisma schema changes.
 - Send all Mercari search/detail calls through `MercariRequestScheduler`; scheduler concurrency alone does not protect against API 429s.
 - Use `searchMercari` in `packages/core` for any new Mercari search need (probes included); do not hand-roll request bodies.
+- Same for eBay: all Browse API calls go through `EbayRequestScheduler` using `EbayClient` from `packages/core`.
 
 ## Route Details
 
@@ -34,6 +36,7 @@ details here.
 - Mercari rate-limit probing: `docs/workflows/mercari-rate-limit-probe.md`
 - Mercari API capabilities / what to scrape: `docs/mercari-scrape-intelligence.md`
 - Market collection (categories, sold prices): `docs/workflows/market-collection.md`
+- eBay collection (Browse API, queries): `docs/workflows/ebay-collection.md`
 - VPS access and firewall: `docs/oracle-vps.md`
 - Switch keyword/search behavior: `docs/switch-software-keywords.md`
 - Analytics context: `docs/analytics-bi-epic.md`
