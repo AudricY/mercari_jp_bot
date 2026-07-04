@@ -1,0 +1,67 @@
+# eBay Browse API collection queries, run on a schedule (see
+# docs/workflows/ebay-collection.md). Presence here = enabled.
+#
+#   id: stable slug, primary key in ebay_queries — renaming creates a new query
+#   keyword / category_id: at least one required. Category ids are eBay
+#     marketplace categories (139971 = Video Game Consoles, 139973 = Video Games)
+#   filter: raw Browse API filter expression. FIXED_PRICE keeps asking prices
+#     comparable with Mercari (no auction bid noise).
+#   marketplace_id: optional, defaults to EBAY_US
+#   snapshot_interval_sec: full sweep (inventory + asking prices, marks gone)
+#   new_sweep_interval_sec: delta sweep of newest listings
+#   Intervals are seconds; omit to disable that job. Min 300.
+queries:
+  # ── Consoles ──
+  - id: us-switch-console
+    label: Switch consoles (US)
+    keyword: nintendo switch console
+    category_id: "139971"
+    filter: "buyingOptions:{FIXED_PRICE}"
+    platform: Nintendo Switch
+    kind: console
+    snapshot_interval_sec: 86400
+    new_sweep_interval_sec: 3600
+  - id: us-ps5-console
+    label: PS5 consoles (US)
+    keyword: playstation 5 console
+    category_id: "139971"
+    filter: "buyingOptions:{FIXED_PRICE}"
+    platform: PS5
+    kind: console
+    snapshot_interval_sec: 86400
+    new_sweep_interval_sec: 3600
+  - id: us-ps3-console
+    label: PS3 consoles (US)
+    keyword: playstation 3 console
+    category_id: "139971"
+    filter: "buyingOptions:{FIXED_PRICE}"
+    platform: PS3
+    kind: console
+    snapshot_interval_sec: 86400
+
+  # ── Software ──
+  - id: us-switch-software
+    label: Switch games (US)
+    keyword: nintendo switch
+    category_id: "139973"
+    filter: "buyingOptions:{FIXED_PRICE}"
+    platform: Nintendo Switch
+    kind: software
+    snapshot_interval_sec: 86400
+    new_sweep_interval_sec: 3600
+  - id: us-ps5-software
+    label: PS5 games (US)
+    keyword: ps5
+    category_id: "139973"
+    filter: "buyingOptions:{FIXED_PRICE}"
+    platform: PS5
+    kind: software
+    snapshot_interval_sec: 86400
+  - id: us-ps3-software
+    label: PS3 games (US)
+    keyword: ps3
+    category_id: "139973"
+    filter: "buyingOptions:{FIXED_PRICE}"
+    platform: PS3
+    kind: software
+    snapshot_interval_sec: 86400

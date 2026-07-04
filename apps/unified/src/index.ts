@@ -4,6 +4,7 @@ import { buildLogger, buildMetrics, loadConfig, redactUnknown } from "@mercari-b
 import { createPrismaClient, initPrisma } from "@mercari-bot/db";
 
 import { createApi } from "./api.js";
+import { maybeStartEbayScanner } from "./ebay-scanner.js";
 import { MercariRequestScheduler } from "./mercari-request-scheduler.js";
 import { startMarketScanner } from "./market-scanner.js";
 import { startNotificationProcessor } from "./notifier.js";
@@ -29,12 +30,14 @@ async function main(): Promise<void> {
   const scheduler = startScheduler(deps);
   const notifier = startNotificationProcessor(deps);
   const marketScanner = startMarketScanner(deps);
+  const ebayScanner = maybeStartEbayScanner(deps);
 
   const shutdown = async () => {
     logger.info("Shutting down…");
     scheduler.stop();
     notifier.stop();
     marketScanner.stop();
+    ebayScanner.stop();
     await app.close();
     await prisma.$disconnect();
   };
