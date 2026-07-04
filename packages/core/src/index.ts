@@ -2,6 +2,7 @@ export * from "./config.js";
 export * from "./constants.js";
 export * from "./dedupe.js";
 export * from "./dpop.js";
+export * from "./ebay.js";
 export * from "./logger.js";
 export * from "./metrics.js";
 export * from "./price.js";

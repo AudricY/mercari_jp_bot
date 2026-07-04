@@ -14,6 +14,10 @@ export interface Metrics {
   mercariRequestDurationSeconds: Histogram;
   mercariRateLimitCooldownsTotal: Counter;
   mercariRequestQueueDepth: Gauge;
+  ebayRequestsTotal: Counter;
+  ebayRequestDurationSeconds: Histogram;
+  ebayRateLimitCooldownsTotal: Counter;
+  ebayRequestQueueDepth: Gauge;
 }
 
 export function buildMetrics(prefix = "mercari_bot_"): Metrics {
@@ -92,6 +96,35 @@ export function buildMetrics(prefix = "mercari_bot_"): Metrics {
     labelNames: ["endpoint"] as const,
   });
 
+  const ebayRequestsTotal = new Counter({
+    name: `${prefix}${METRIC_NAMES.ebayRequestsTotal}`,
+    help: "Total eBay API requests by endpoint, status code, and result",
+    registers: [registry],
+    labelNames: ["endpoint", "status_code", "result"] as const,
+  });
+
+  const ebayRequestDurationSeconds = new Histogram({
+    name: `${prefix}${METRIC_NAMES.ebayRequestDurationSeconds}`,
+    help: "Duration of eBay API requests in seconds",
+    buckets: [0.1, 0.25, 0.5, 1, 2, 5, 10, 20],
+    registers: [registry],
+    labelNames: ["endpoint"] as const,
+  });
+
+  const ebayRateLimitCooldownsTotal = new Counter({
+    name: `${prefix}${METRIC_NAMES.ebayRateLimitCooldownsTotal}`,
+    help: "Total eBay rate-limit cooldowns entered",
+    registers: [registry],
+    labelNames: ["endpoint"] as const,
+  });
+
+  const ebayRequestQueueDepth = new Gauge({
+    name: `${prefix}${METRIC_NAMES.ebayRequestQueueDepth}`,
+    help: "Queued eBay API requests by endpoint",
+    registers: [registry],
+    labelNames: ["endpoint"] as const,
+  });
+
   return {
     registry,
     scanDurationSeconds,
@@ -104,5 +137,9 @@ export function buildMetrics(prefix = "mercari_bot_"): Metrics {
     mercariRequestDurationSeconds,
     mercariRateLimitCooldownsTotal,
     mercariRequestQueueDepth,
+    ebayRequestsTotal,
+    ebayRequestDurationSeconds,
+    ebayRateLimitCooldownsTotal,
+    ebayRequestQueueDepth,
   };
 }

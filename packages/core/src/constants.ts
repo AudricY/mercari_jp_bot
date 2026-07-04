@@ -9,4 +9,8 @@ export const METRIC_NAMES = {
   mercariRequestDurationSeconds: "mercari_request_duration_seconds",
   mercariRateLimitCooldownsTotal: "mercari_rate_limit_cooldowns_total",
   mercariRequestQueueDepth: "mercari_request_queue_depth",
+  ebayRequestsTotal: "ebay_requests_total",
+  ebayRequestDurationSeconds: "ebay_request_duration_seconds",
+  ebayRateLimitCooldownsTotal: "ebay_rate_limit_cooldowns_total",
+  ebayRequestQueueDepth: "ebay_request_queue_depth",
 } as const;
