@@ -5,6 +5,7 @@ import type { Logger } from "pino";
 import { redactUnknown, type AppConfig, type Metrics } from "@mercari-bot/core";
 
 import { registerAnalyticsRoutes } from "./analytics.js";
+import { registerMarketAnalyticsRoutes } from "./market-analytics.js";
 import { assertAdminAccess } from "./auth.js";
 import type { MercariRequestScheduler } from "./mercari-request-scheduler.js";
 import { scanKeyword } from "./scanner.js";
@@ -117,6 +118,7 @@ export function createApi(deps: ApiDeps) {
   });
 
   registerAnalyticsRoutes(app, { prisma });
+  registerMarketAnalyticsRoutes(app, { prisma });
 
   app.post("/v1/config/reload", async () => {
     const result = await syncConfigFromDisk(prisma, logger, config);
