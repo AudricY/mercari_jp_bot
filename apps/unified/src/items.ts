@@ -154,7 +154,7 @@ interface ParsedRawDetail {
   };
 }
 
-function normalizeForMatch(value: string): string {
+export function normalizeForMatch(value: string): string {
   return value
     .normalize("NFKC")
     .toLowerCase()

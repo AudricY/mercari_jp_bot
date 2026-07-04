@@ -1,0 +1,112 @@
+# Mercari JP → eBay US arbitrage configuration (see docs/workflows/arbitrage.md).
+#
+# economics: the fee model behind every margin/ROI/max-buy number.
+#   Defaults assume a proxy-buying service (Buyee/ZenMarket-style flat fee),
+#   eBay video-games final value fee, and flat international shipping tiers.
+#   Tune these to your actual operation — the numbers are only as honest as
+#   this block.
+economics:
+  fx_jpy_per_usd_fallback: 150 # used when live FX fetch is disabled/unavailable
+  ebay_final_value_fee_pct: 13.25
+  ebay_fixed_fee_usd: 0.30
+  ebay_ad_rate_pct: 2.0 # promoted listings; 0 if you never promote
+  proxy_fee_jpy: 500 # flat proxy/forwarder fee per item
+  proxy_fee_pct: 0 # percent-of-price proxy fee (some services charge this)
+  jp_domestic_shipping_jpy: 800 # seller → proxy warehouse
+  intl_shipping_usd_by_class:
+    small_packet: 8 # boxed game software
+    handheld: 16 # handheld consoles, controllers
+    console: 28 # home consoles
+  target_roi_pct: 30 # max-buy price is derived from this
+
+# products: what to arbitrage. Matching is substring-on-normalized-title
+# (same normalization as the item catalog), so aliases should be distinctive.
+#   id: stable slug (primary key in arbitrage_products)
+#   mercari.category_ids: Mercari leaf categories to search within — must be
+#     categories collected in catalog/market-categories.yaml
+#   mercari.aliases / exclude: JP title matching
+#   ebay.aliases / exclude / require_any: EN title matching over collected
+#     ebay_listings; require_any keeps only Japan-import comps when set
+#   max_buy_jpy_override: manual alert threshold (otherwise derived from comps)
+products:
+  # ── Consoles ──
+  - id: ps3-console
+    label: PS3 console
+    platform: PS3
+    kind: console
+    shipping_class: console
+    mercari:
+      category_ids: [7091]
+      aliases: ["PS3 本体", "PS3本体", "プレステ3 本体", "プレイステーション3 本体", "PlayStation3 本体"]
+      exclude: ["ジャンク", "junk", "箱のみ", "説明書のみ", "コントローラーのみ", "torne", "トルネ"]
+    ebay:
+      aliases: ["ps3 console", "playstation 3 console", "playstation 3 system"]
+      exclude: ["for parts", "broken", "not working", "controller only", "box only", "shell", "skin", "sticker", "faceplate"]
+      require_any: []
+  - id: ps4-console
+    label: PS4 console
+    platform: PS4
+    kind: console
+    shipping_class: console
+    mercari:
+      category_ids: [6988]
+      aliases: ["PS4 本体", "PS4本体", "プレステ4 本体", "PlayStation4 本体", "プレイステーション4 本体"]
+      exclude: ["ジャンク", "junk", "箱のみ", "説明書のみ", "コントローラーのみ"]
+    ebay:
+      aliases: ["ps4 console", "playstation 4 console", "playstation 4 system"]
+      exclude: ["for parts", "broken", "not working", "controller only", "box only", "shell", "skin", "sticker", "faceplate"]
+      require_any: []
+  - id: switch-console
+    label: Nintendo Switch console
+    platform: Nintendo Switch
+    kind: console
+    shipping_class: handheld
+    mercari:
+      category_ids: [701]
+      aliases: ["Switch 本体", "スイッチ 本体", "ニンテンドースイッチ 本体", "Nintendo Switch 本体"]
+      exclude: ["ジャンク", "junk", "箱のみ", "ジョイコンのみ", "コントローラーのみ", "ドックのみ"]
+    ebay:
+      aliases: ["nintendo switch console", "nintendo switch system"]
+      exclude: ["for parts", "broken", "not working", "joy-con only", "controller only", "dock only", "box only", "lite", "oled"]
+      require_any: []
+
+  # ── Software (JP-version games with US collector demand) ──
+  - id: pokemon-emerald-gba
+    label: Pokemon Emerald (GBA, JP)
+    platform: Game Boy Advance
+    kind: software
+    shipping_class: small_packet
+    mercari:
+      category_ids: [7172]
+      aliases: ["ポケットモンスター エメラルド", "ポケモン エメラルド"]
+      exclude: ["海外版", "北米版", "英語版", "カセットのみ相談"]
+    ebay:
+      aliases: ["pokemon emerald"]
+      exclude: ["repro", "reproduction", "custom", "case only", "box only", "manual only", "guide"]
+      require_any: ["japan", "japanese", "jp "]
+  - id: pokemon-heartgold-ds
+    label: Pokemon HeartGold (DS, JP)
+    platform: Nintendo DS
+    kind: software
+    shipping_class: small_packet
+    mercari:
+      category_ids: [7051]
+      aliases: ["ポケットモンスター ハートゴールド", "ポケモン ハートゴールド"]
+      exclude: ["海外版", "北米版", "英語版", "ポケウォーカーのみ"]
+    ebay:
+      aliases: ["pokemon heartgold", "pokemon heart gold"]
+      exclude: ["repro", "reproduction", "custom", "case only", "box only", "manual only", "pokewalker only", "guide"]
+      require_any: ["japan", "japanese", "jp "]
+  - id: mother3-gba
+    label: Mother 3 (GBA, JP-only)
+    platform: Game Boy Advance
+    kind: software
+    shipping_class: small_packet
+    mercari:
+      category_ids: [7172]
+      aliases: ["MOTHER3", "MOTHER 3", "マザー3"]
+      exclude: ["デラックスボックス", "海外版"]
+    ebay:
+      aliases: ["mother 3"]
+      exclude: ["repro", "reproduction", "custom", "english translated", "case only", "box only", "manual only", "earthbound 64", "deluxe box", "guide"]
+      require_any: []

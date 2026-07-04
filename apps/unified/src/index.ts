@@ -4,6 +4,7 @@ import { buildLogger, buildMetrics, loadConfig, redactUnknown } from "@mercari-b
 import { createPrismaClient, initPrisma } from "@mercari-bot/db";
 
 import { createApi } from "./api.js";
+import { startArbitrageAlerter } from "./arbitrage-alerts.js";
 import { maybeStartEbayScanner } from "./ebay-scanner.js";
 import { MercariRequestScheduler } from "./mercari-request-scheduler.js";
 import { startMarketScanner } from "./market-scanner.js";
@@ -31,6 +32,7 @@ async function main(): Promise<void> {
   const notifier = startNotificationProcessor(deps);
   const marketScanner = startMarketScanner(deps);
   const ebayScanner = maybeStartEbayScanner(deps);
+  const arbitrageAlerter = startArbitrageAlerter(deps);
 
   const shutdown = async () => {
     logger.info("Shutting down…");
@@ -38,6 +40,7 @@ async function main(): Promise<void> {
     notifier.stop();
     marketScanner.stop();
     ebayScanner.stop();
+    arbitrageAlerter.stop();
     await app.close();
     await prisma.$disconnect();
   };

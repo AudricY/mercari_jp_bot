@@ -38,6 +38,14 @@ queries:
     platform: PS3
     kind: console
     snapshot_interval_sec: 86400
+  - id: us-ps4-console
+    label: PS4 consoles (US)
+    keyword: playstation 4 console
+    category_id: "139971"
+    filter: "buyingOptions:{FIXED_PRICE}"
+    platform: PS4
+    kind: console
+    snapshot_interval_sec: 86400
 
   # ── Software ──
   - id: us-switch-software
@@ -63,5 +71,21 @@ queries:
     category_id: "139973"
     filter: "buyingOptions:{FIXED_PRICE}"
     platform: PS3
+    kind: software
+    snapshot_interval_sec: 86400
+  - id: us-gba-software
+    label: GBA games (US)
+    keyword: gameboy advance
+    category_id: "139973"
+    filter: "buyingOptions:{FIXED_PRICE}"
+    platform: Game Boy Advance
+    kind: software
+    snapshot_interval_sec: 86400
+  - id: us-ds-software
+    label: DS games (US)
+    keyword: nintendo ds
+    category_id: "139973"
+    filter: "buyingOptions:{FIXED_PRICE}"
+    platform: Nintendo DS
     kind: software
     snapshot_interval_sec: 86400

@@ -272,6 +272,27 @@ export async function sendDailySummary(payload: SendDailySummaryJob, deps: Notif
   await telegramPost(config, "sendMessage", summaryPayload);
 }
 
+/** Plain text send for non-keyword alerting (arbitrage); optional forum topic. */
+export async function sendTelegramText(
+  deps: Pick<NotifierDeps, "config" | "prisma">,
+  text: string,
+  topicName?: string,
+): Promise<void> {
+  const payload: Record<string, string | number> = {
+    chat_id: deps.config.TELEGRAM_CHAT_ID,
+    text,
+  };
+
+  if (topicName) {
+    const threadId = await lookupTopicThreadId(topicName, deps.config.TELEGRAM_CHAT_ID, deps.prisma);
+    if (threadId) {
+      payload.message_thread_id = threadId;
+    }
+  }
+
+  await telegramPost(deps.config, "sendMessage", payload);
+}
+
 const POLL_INTERVAL_MS = 2000;
 const RETRY_SWEEP_INTERVAL_MS = 60_000;
 const RETRY_COOLDOWN_MS = 30_000;

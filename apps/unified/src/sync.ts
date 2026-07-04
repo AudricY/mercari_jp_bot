@@ -7,6 +7,7 @@ import type { Logger } from "pino";
 import { parseYamlConfig, type AppConfig } from "@mercari-bot/core";
 import { syncKeywordsFromConfig, type SyncResult } from "@mercari-bot/db";
 
+import { syncArbitrageProductsFromDisk, type ArbitrageProductSyncResult } from "./arbitrage-config.js";
 import { syncEbayQueriesFromDisk, type EbayQuerySyncResult } from "./ebay-config.js";
 import { syncItemsFromDisk, type ItemSyncResult } from "./items.js";
 import { syncMarketCategoriesFromDisk, type MarketCategorySyncResult } from "./market-config.js";
@@ -16,6 +17,7 @@ export interface CatalogSyncResult {
   items: ItemSyncResult;
   marketCategories: MarketCategorySyncResult;
   ebayQueries: EbayQuerySyncResult;
+  arbitrageProducts: ArbitrageProductSyncResult;
 }
 
 export async function syncConfigFromDisk(
@@ -29,12 +31,14 @@ export async function syncConfigFromDisk(
 
   logger.info({ keywordCount: keywords.length }, "Parsed config.yaml");
 
-  const [keywordsResult, itemsResult, marketCategoriesResult, ebayQueriesResult] = await Promise.all([
-    syncKeywordsFromConfig(prisma, keywords, config, logger),
-    syncItemsFromDisk(prisma),
-    syncMarketCategoriesFromDisk(prisma),
-    syncEbayQueriesFromDisk(prisma),
-  ]);
+  const [keywordsResult, itemsResult, marketCategoriesResult, ebayQueriesResult, arbitrageProductsResult] =
+    await Promise.all([
+      syncKeywordsFromConfig(prisma, keywords, config, logger),
+      syncItemsFromDisk(prisma),
+      syncMarketCategoriesFromDisk(prisma),
+      syncEbayQueriesFromDisk(prisma),
+      syncArbitrageProductsFromDisk(prisma),
+    ]);
 
   logger.info(
     {
@@ -73,10 +77,20 @@ export async function syncConfigFromDisk(
     "eBay query sync complete",
   );
 
+  logger.info(
+    {
+      created: arbitrageProductsResult.created,
+      updated: arbitrageProductsResult.updated,
+      disabled: arbitrageProductsResult.disabled,
+    },
+    "Arbitrage product sync complete",
+  );
+
   return {
     keywords: keywordsResult,
     items: itemsResult,
     marketCategories: marketCategoriesResult,
     ebayQueries: ebayQueriesResult,
+    arbitrageProducts: arbitrageProductsResult,
   };
 }
