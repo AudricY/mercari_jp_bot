@@ -312,6 +312,27 @@ model EbayListing {
   @@map("ebay_listings")
 }
 
+model ArbitrageProduct {
+  id                 String   @id // slug from catalog/arbitrage-products.yaml
+  label              String
+  platform           String
+  kind               String // software | console | accessory | other
+  shippingClass      String   @map("shipping_class")
+  enabled            Boolean  @default(true)
+  mercariCategoryIds Json     @map("mercari_category_ids") // number[]
+  mercariAliases     Json     @map("mercari_aliases") // string[] (JP + EN title aliases)
+  mercariExclude     Json     @map("mercari_exclude") // string[] substrings that disqualify
+  ebayAliases        Json     @map("ebay_aliases") // string[]
+  ebayExclude        Json     @map("ebay_exclude") // string[]
+  ebayRequireAny     Json     @map("ebay_require_any") // string[]; empty = no requirement
+  maxBuyJpyOverride  Int?     @map("max_buy_jpy_override") // manual alert threshold
+  notes              String?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("arbitrage_products")
+}
+
 model DailyItemMarketStat {
   dateUtc         DateTime @map("date_utc")
   itemId          String   @map("item_id")
