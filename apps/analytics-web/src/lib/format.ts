@@ -3,6 +3,19 @@ export function formatPrice(price: number, currency = "JPY"): string {
   return `${price.toLocaleString()} ${currency}`;
 }
 
+export function formatUsd(value: number): string {
+  return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+export function formatSignedUsd(value: number): string {
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+  return `${sign}${formatUsd(Math.abs(value))}`;
+}
+
+export function formatPct(value: number): string {
+  return `${value.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",

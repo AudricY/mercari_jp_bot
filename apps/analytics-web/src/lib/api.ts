@@ -192,6 +192,129 @@ export function searchMarketListings(params: {
   }>("/v1/analytics/market/search", params);
 }
 
+export type ArbitrageVerdict = "buy" | "watch" | "skip" | "no_data";
+
+export interface ArbitrageFx {
+  jpyPerUsd: number;
+  source: string;
+  fetchedAt: string;
+}
+
+export interface ArbitrageFeeModel {
+  ebayFinalValueFeePct: number;
+  ebayFixedFeeUsd: number;
+  ebayAdRatePct: number;
+  proxyFeeJpy: number;
+  proxyFeePct: number;
+  jpDomesticShippingJpy: number;
+  intlShippingUsdByClass: Record<string, number>;
+  targetRoiPct: number;
+}
+
+export interface ArbitrageMercariStats {
+  liveCount: number | null;
+  cheapestLiveJpy: number | null;
+  cheapestLiveUrl: string | null;
+  cheapestLiveTitle: string | null;
+  medianLiveJpy: number | null;
+  medianSoldJpy: number | null;
+  soldCount30d: number | null;
+}
+
+export interface ArbitrageEbayStats {
+  liveCount: number | null;
+  lowestLiveUsd: number | null;
+  lowestLiveUrl: string | null;
+  medianLiveUsd: number | null;
+  goneCount30d: number | null;
+}
+
+export interface ArbitrageEconomics {
+  buyJpy: number;
+  landedCostUsd: number;
+  listPriceUsd: number;
+  netProceedsUsd: number;
+  marginUsd: number;
+  roiPct: number;
+  maxBuyJpy: number | null;
+  breakevenBuyJpy: number | null;
+}
+
+export interface ArbitrageOpportunity {
+  slug: string;
+  label: string;
+  platform: string;
+  kind: string;
+  shippingClass: string;
+  mercari: ArbitrageMercariStats;
+  ebay: ArbitrageEbayStats;
+  economics: ArbitrageEconomics | null;
+  verdict: ArbitrageVerdict;
+}
+
+export interface ArbitrageProduct {
+  slug: string;
+  label: string;
+  platform: string;
+  kind: string;
+  shippingClass: string;
+  notes: string | null;
+  mercariCategoryIds: number[];
+  enabled: boolean;
+}
+
+export interface ArbitrageMercariLiveListing {
+  title: string;
+  url: string;
+  priceJpy: number;
+  listedAt: string | null;
+  thumbnailUrl: string | null;
+  landedCostUsd: number | null;
+  marginUsd: number | null;
+  roiPct: number | null;
+}
+
+export interface ArbitrageMercariSoldListing {
+  title: string;
+  url: string;
+  soldPriceJpy: number;
+  soldObservedAt: string | null;
+}
+
+export interface ArbitrageEbayLiveListing {
+  title: string;
+  url: string;
+  priceUsd: number;
+  condition: string | null;
+  listedAt: string | null;
+  imageUrl: string | null;
+}
+
+export function getArbitrageOpportunities(params?: { sort?: string }) {
+  return apiFetch<{
+    fx: ArbitrageFx;
+    feeModel: ArbitrageFeeModel;
+    generatedAt: string;
+    opportunities: ArbitrageOpportunity[];
+  }>("/v1/analytics/arbitrage/opportunities", params);
+}
+
+export function getArbitrageProduct(slug: string) {
+  return apiFetch<{
+    product: ArbitrageProduct;
+    fx: ArbitrageFx;
+    feeModel: ArbitrageFeeModel;
+    generatedAt: string;
+    mercari: ArbitrageMercariStats;
+    ebay: ArbitrageEbayStats;
+    economics: ArbitrageEconomics | null;
+    verdict: ArbitrageVerdict;
+    mercariLive: ArbitrageMercariLiveListing[];
+    mercariRecentSold: ArbitrageMercariSoldListing[];
+    ebayLive: ArbitrageEbayLiveListing[];
+  }>(`/v1/analytics/arbitrage/products/${encodeURIComponent(slug)}`);
+}
+
 export function getItems() {
   return apiFetch<{ items: ItemSummary[] }>(
     "/v1/analytics/items",

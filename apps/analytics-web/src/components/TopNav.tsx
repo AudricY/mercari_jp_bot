@@ -4,6 +4,7 @@ import { getAnalyticsSessionState } from "@/lib/auth";
 
 const NAV_LINKS = [
   { href: "/market", label: "Market" },
+  { href: "/arbitrage", label: "Arbitrage" },
   { href: "/", label: "Items" },
   { href: "/keywords", label: "Keywords" },
   { href: "/market/search", label: "Search" },

@@ -120,6 +120,68 @@ describe("analytics api client", () => {
     );
   });
 
+  it("calls the arbitrage opportunities endpoint with sort param", async () => {
+    process.env.ADMIN_TOKEN = "test-admin-token";
+    process.env.ANALYTICS_API_URL = "http://app:3000";
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ fx: {}, feeModel: {}, generatedAt: "", opportunities: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getArbitrageOpportunities } = await import("./api");
+    await getArbitrageOpportunities({ sort: "margin" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://app:3000/v1/analytics/arbitrage/opportunities?sort=margin",
+      expect.objectContaining({
+        headers: {
+          Authorization: "Bearer test-admin-token",
+          "X-Forwarded-For": "127.0.0.1",
+        },
+      }),
+    );
+  });
+
+  it("omits the sort param when not provided", async () => {
+    process.env.ADMIN_TOKEN = "test-admin-token";
+    process.env.ANALYTICS_API_URL = "http://app:3000";
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ fx: {}, feeModel: {}, generatedAt: "", opportunities: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getArbitrageOpportunities } = await import("./api");
+    await getArbitrageOpportunities();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://app:3000/v1/analytics/arbitrage/opportunities",
+      expect.any(Object),
+    );
+  });
+
+  it("calls the arbitrage product endpoint with an encoded slug", async () => {
+    process.env.ADMIN_TOKEN = "test-admin-token";
+    process.env.ANALYTICS_API_URL = "http://app:3000";
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getArbitrageProduct } = await import("./api");
+    await getArbitrageProduct("ps3-console");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://app:3000/v1/analytics/arbitrage/products/ps3-console",
+      expect.any(Object),
+    );
+  });
+
   it("calls the item overview endpoint", async () => {
     process.env.ADMIN_TOKEN = "test-admin-token";
     process.env.ANALYTICS_API_URL = "http://app:3000";
