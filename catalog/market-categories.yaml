@@ -1,0 +1,116 @@
+# Mercari video-game category leaves collected on a schedule.
+# IDs are Mercari "ntiers" leaf category ids (see docs/mercari-scrape-intelligence.md).
+# Presence here = enabled. Intervals are seconds; omit to disable that job.
+#   snapshot_interval_sec: full on-sale sweep (inventory + asking prices)
+#   sold_sweep_interval_sec: full sold-index sweep (transaction prices)
+#   new_sweep_interval_sec: delta sweep of newest on-sale listings
+categories:
+  # ── Software ──
+  - category_id: 702
+    label: Switch ソフト
+    platform: Nintendo Switch
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+    new_sweep_interval_sec: 3600
+  - category_id: 7015
+    label: Switch 2 ソフト
+    platform: Nintendo Switch 2
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+    new_sweep_interval_sec: 3600
+  - category_id: 6985
+    label: PS5 ソフト
+    platform: PS5
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+    new_sweep_interval_sec: 7200
+  - category_id: 6989
+    label: PS4 ソフト
+    platform: PS4
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+  - category_id: 7092
+    label: PS3 ソフト
+    platform: PS3
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+  - category_id: 704
+    label: 3DS/2DS ソフト
+    platform: Nintendo 3DS
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+  - category_id: 7051
+    label: DS ソフト
+    platform: Nintendo DS
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+  - category_id: 7105
+    label: Wii ソフト
+    platform: Wii
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+  - category_id: 7145
+    label: PS2 ソフト
+    platform: PS2
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+  - category_id: 7172
+    label: GBA ソフト
+    platform: Game Boy Advance
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+  - category_id: 7180
+    label: GB ソフト
+    platform: Game Boy
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+  - category_id: 7188
+    label: SFC ソフト
+    platform: Super Famicom
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+  - category_id: 7200
+    label: FC ソフト
+    platform: Famicom
+    kind: software
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+
+  # ── Consoles ──
+  - category_id: 701
+    label: Switch 本体
+    platform: Nintendo Switch
+    kind: console
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+    new_sweep_interval_sec: 3600
+  - category_id: 703
+    label: Switch Lite 本体
+    platform: Nintendo Switch
+    kind: console
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+  - category_id: 6988
+    label: PS4 本体
+    platform: PS4
+    kind: console
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400
+  - category_id: 7091
+    label: PS3 本体
+    platform: PS3
+    kind: console
+    snapshot_interval_sec: 86400
+    sold_sweep_interval_sec: 86400

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import type { Logger } from "pino";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -193,6 +193,74 @@ export async function refreshDailyItemMarketStats(
   logger.info(
     { dateUtc: dateUtc.toISOString(), itemCount: rows.length, freshSince: freshSince.toISOString() },
     "Daily item market stats refreshed",
+  );
+}
+
+export async function refreshDailyCategoryMarketStats(
+  now: Date,
+  deps: MarketStatsDeps,
+): Promise<void> {
+  const { logger, prisma } = deps;
+  const dateUtc = utcDayStart(now);
+  const dayStartSec = Math.floor(dateUtc.getTime() / 1000);
+  const dayEnd = new Date(dateUtc.getTime() + DAY_MS);
+
+  const categories = await prisma.marketCategory.findMany({ where: { enabled: true } });
+  const rows: Prisma.DailyCategoryMarketStatCreateManyInput[] = [];
+
+  for (const category of categories) {
+    const [onSale, newToday, soldToday] = await Promise.all([
+      prisma.marketListing.findMany({
+        where: { categoryId: category.id, status: "on_sale" },
+        select: { price: true },
+      }),
+      prisma.marketListing.count({
+        where: {
+          categoryId: category.id,
+          mercariCreatedSec: { gte: dayStartSec, lt: dayStartSec + DAY_MS / 1000 },
+        },
+      }),
+      prisma.marketListing.findMany({
+        where: {
+          categoryId: category.id,
+          soldObservedAt: { gte: dateUtc, lt: dayEnd },
+          soldPrice: { not: null },
+        },
+        select: { soldPrice: true },
+      }),
+    ]);
+
+    const asking = computePriceStats(onSale.map((listing) => listing.price));
+    const sold = computePriceStats(soldToday.map((listing) => Number(listing.soldPrice)));
+
+    rows.push({
+      dateUtc,
+      categoryId: category.id,
+      onSaleCount: asking.count,
+      newListingCount: newToday,
+      soldCount: sold.count,
+      askingMinPrice: asking.count > 0 ? asking.min : null,
+      askingMedianPrice: asking.count > 0 ? asking.median : null,
+      askingP25Price: asking.count > 0 ? asking.p25 : null,
+      askingP75Price: asking.count > 0 ? asking.p75 : null,
+      soldMinPrice: sold.count > 0 ? sold.min : null,
+      soldMedianPrice: sold.count > 0 ? sold.median : null,
+      soldP25Price: sold.count > 0 ? sold.p25 : null,
+      soldP75Price: sold.count > 0 ? sold.p75 : null,
+      soldMaxPrice: sold.count > 0 ? sold.max : null,
+    });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.dailyCategoryMarketStat.deleteMany({ where: { dateUtc } });
+    if (rows.length > 0) {
+      await tx.dailyCategoryMarketStat.createMany({ data: rows });
+    }
+  });
+
+  logger.info(
+    { dateUtc: dateUtc.toISOString(), categoryCount: rows.length },
+    "Daily category market stats refreshed",
   );
 }
 

@@ -192,6 +192,77 @@ model DailyKeywordMarketStat {
   @@map("daily_keyword_market_stats")
 }
 
+model MarketCategory {
+  id                  Int       @id // Mercari ntiers leaf category id
+  label               String
+  platform            String
+  kind                String // software | console | accessory | other
+  enabled             Boolean   @default(true)
+  snapshotIntervalSec Int?      @map("snapshot_interval_sec")
+  soldSweepIntervalSec Int?     @map("sold_sweep_interval_sec")
+  newSweepIntervalSec Int?      @map("new_sweep_interval_sec")
+  newCursorCreatedSec Int?      @map("new_cursor_created_sec")
+  lastSnapshotAt      DateTime? @map("last_snapshot_at")
+  lastSoldSweepAt     DateTime? @map("last_sold_sweep_at")
+  lastNewSweepAt      DateTime? @map("last_new_sweep_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  listings   MarketListing[]
+  dailyStats DailyCategoryMarketStat[]
+
+  @@map("market_categories")
+}
+
+model MarketListing {
+  id               String    @id @default(uuid())
+  mercariId        String    @unique @map("mercari_id")
+  categoryId       Int       @map("category_id")
+  title            String
+  price            Int
+  status           String // on_sale | trading | sold_out | gone
+  conditionId      Int?      @map("condition_id")
+  sellerId         String?   @map("seller_id")
+  shippingPayerId  Int?      @map("shipping_payer_id")
+  thumbnailUrl     String?   @map("thumbnail_url")
+  mercariCreatedSec Int      @map("mercari_created_sec")
+  mercariUpdatedSec Int      @map("mercari_updated_sec")
+  soldPrice        Int?      @map("sold_price")
+  soldObservedAt   DateTime? @map("sold_observed_at")
+  firstSeenAt      DateTime  @map("first_seen_at")
+  lastSeenAt       DateTime  @map("last_seen_at")
+
+  category MarketCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId, status, price])
+  @@index([categoryId, mercariCreatedSec])
+  @@index([categoryId, soldObservedAt])
+  @@index([status, lastSeenAt])
+  @@map("market_listings")
+}
+
+model DailyCategoryMarketStat {
+  dateUtc           DateTime @map("date_utc")
+  categoryId        Int      @map("category_id")
+  onSaleCount       Int      @map("on_sale_count")
+  newListingCount   Int      @map("new_listing_count")
+  soldCount         Int      @map("sold_count")
+  askingMinPrice    Decimal? @map("asking_min_price")
+  askingMedianPrice Decimal? @map("asking_median_price")
+  askingP25Price    Decimal? @map("asking_p25_price")
+  askingP75Price    Decimal? @map("asking_p75_price")
+  soldMinPrice      Decimal? @map("sold_min_price")
+  soldMedianPrice   Decimal? @map("sold_median_price")
+  soldP25Price      Decimal? @map("sold_p25_price")
+  soldP75Price      Decimal? @map("sold_p75_price")
+  soldMaxPrice      Decimal? @map("sold_max_price")
+
+  category MarketCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([dateUtc, categoryId])
+  @@map("daily_category_market_stats")
+}
+
 model DailyItemMarketStat {
   dateUtc         DateTime @map("date_utc")
   itemId          String   @map("item_id")

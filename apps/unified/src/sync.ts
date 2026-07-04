@@ -8,10 +8,12 @@ import { parseYamlConfig, type AppConfig } from "@mercari-bot/core";
 import { syncKeywordsFromConfig, type SyncResult } from "@mercari-bot/db";
 
 import { syncItemsFromDisk, type ItemSyncResult } from "./items.js";
+import { syncMarketCategoriesFromDisk, type MarketCategorySyncResult } from "./market-config.js";
 
 export interface CatalogSyncResult {
   keywords: SyncResult;
   items: ItemSyncResult;
+  marketCategories: MarketCategorySyncResult;
 }
 
 export async function syncConfigFromDisk(
@@ -25,9 +27,10 @@ export async function syncConfigFromDisk(
 
   logger.info({ keywordCount: keywords.length }, "Parsed config.yaml");
 
-  const [keywordsResult, itemsResult] = await Promise.all([
+  const [keywordsResult, itemsResult, marketCategoriesResult] = await Promise.all([
     syncKeywordsFromConfig(prisma, keywords, config, logger),
     syncItemsFromDisk(prisma),
+    syncMarketCategoriesFromDisk(prisma),
   ]);
 
   logger.info(
@@ -49,8 +52,18 @@ export async function syncConfigFromDisk(
     "Item sync complete",
   );
 
+  logger.info(
+    {
+      created: marketCategoriesResult.created,
+      updated: marketCategoriesResult.updated,
+      disabled: marketCategoriesResult.disabled,
+    },
+    "Market category sync complete",
+  );
+
   return {
     keywords: keywordsResult,
     items: itemsResult,
+    marketCategories: marketCategoriesResult,
   };
 }

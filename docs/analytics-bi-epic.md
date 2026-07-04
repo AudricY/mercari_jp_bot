@@ -1,5 +1,12 @@
 # Analytics / BI Epic Spec
 
+> **Status 2026-07-05**: this epic shipped (keyword/item dashboards on daily
+> snapshot tables; `ListingObservation` was later replaced by daily rollups).
+> The second analytics wave — comprehensive category-level market collection
+> with sold-price data and the Market UI — is documented in
+> `docs/workflows/market-collection.md` and `docs/mercari-scrape-intelligence.md`.
+> This file is kept as historical context for phase-1 decisions.
+
 Private business-intelligence dashboard for Mercari JP Bot. This document is a handoff spec for the next agent to implement the first analytics roadmap.
 
 ## Objective

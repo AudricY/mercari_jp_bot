@@ -24,6 +24,10 @@ Images are built locally and pushed to GHCR (`ghcr.io/audricy/mercari-jp-bot`). 
    ```bash
    ssh ubuntu@161.118.204.72 'cd ~/mercari_jp_bot && docker compose exec -T app pnpm --filter @mercari-bot/unified run backfill:items'
    ```
+   First deploy of market collection only: the scanner backfills all
+   categories automatically once running; to force it in the foreground use
+   `docker compose exec -T app pnpm --filter @mercari-bot/unified run market-scan-once`
+   (see `docs/workflows/market-collection.md`).
 4. Verify:
    ```bash
    ssh ubuntu@161.118.204.72 'curl -sf http://localhost:3000/v1/health/live'
